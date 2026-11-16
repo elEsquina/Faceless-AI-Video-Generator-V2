@@ -1,70 +1,26 @@
-# Generation Skill: Kids' Animated Stories
+# Kids Stories: Agent Generation Guide
 
-This guide outlines rules, narrative patterns, and code generation standards for children's animated videos.
+Video type: `kids_stories`. Optimize for clarity, age-appropriate plots, safe themes, visible character reactions and consistent character identities. Do not infer a mandatory engine from the type.
 
----
+## Director decision
+- Prefer Blender/Python for fully 3D acting when a **licensed, locally installed** rig/asset and renderer exist.
+- Prefer Three.js + Remotion for illustrated 2.5D stories, camera glides, and stylized billboards.
+- Roblox-specific characters, emotes, hairstyles and sets are NOT part of this skill. The upstream NoCodeHack engine requires its own assets and Roblox Studio MCP setup; do not claim they are available.
+- Select an engine per scene based on available tools and asset budget; write the decision and fallback into `plan.json`.
 
-## 1. Domain Profile
+## Story-to-animation contract
+Plan a clear hook, goal, escalating obstacle, emotional turn and resolution. Generate structured scene beats with `scene_id`, `start_s`, `duration_s`, `setting`, `cast`, `action`, `reaction`, `camera`, `narration`, `sfx`, and `asset_refs`. Each speaking character should trigger a listener reaction when helpful. Every scene needs purposeful motion, but do not add rapid cuts merely to fill time. Maintain location, scale, costume, eye-line and lighting continuity.
 
-- **Target Audience**: Ages 4–10.
-- **Tone**: Playful, vibrant, warm, emotionally expressive, and clear.
-- **Narrative Arc**:
-  1. *Introduction* (15%): Introduce main character, world, and goal.
-  2. *Adventure / Complication* (50%): A humorous challenge, obstacle, or journey.
-  3. *Climax / Discovery* (20%): Solving the problem with kindness, creativity, or teamwork.
-  4. *Resolution / Moral* (15%): Warm ending with a takeaway lesson.
+## Blender-style structured route (adapted from nocodehack)
+1. Write a versioned `story.json`/job plan; inspect the actual Blender adapter capabilities before emitting animation instructions.
+2. Lint the story for missing props, undeclared cast, impossible/overlapping times, bad frame bounds and unknown action types.
+3. Perform **geometry gates** on each constructed scene before video render: feet-ground contact, object-hand contact, object collision, camera framing, gaze/face visibility, and character path intersection. Require an explicit PASS/FAIL report; only call it PASS after running an implemented check.
+4. Render low-cost draft frames/contact sheet; review entrance, prop visibility, reaction framing, emotional peak and shot variation.
+5. Repair only failed scenes. Repeat validation after every repair. Render preview, then final only with user permission.
+6. Mix voice/SFX/music after picture timing is locked; caption policy follows the user's settings, not the upstream default.
 
----
+## Three.js/Remotion-style route (adapted from mromidev)
+Use scene timeline / frame-indexed camera keys / separate world, characters and post layers. Keep characters original and reference visuals for style study only. For each major beat generate still frames, compare against a written style brief, fix occlusion/silhouettes, then render. Scale pixel-space effects with export resolution. Never hard-code source-specific bridge characters or lighting as global requirements.
 
-## 2. Recommended Engine Selection
-
-- **Primary**: **Blender Python API (`bpy`)** for stylized 3D low-poly or claymation-style character scenes.
-- **Alternative**: **Three.js + Remotion** for 2D/2.5D storybook illustration scenes with paper cutout animations.
-
----
-
-## 3. Script & Audio Pacing
-
-- **Narration Speed**: Slow to moderate (approx. 110–130 words per minute).
-- **Voice Style**: Friendly, warm, expressive, with distinct character inflections.
-- **Sound Effects (SFX)**: Frequent and cartoonish (whoosh, boing, pop, magic chime, footstep pitter-patter).
-- **Background Music (BGM)**: Gentle acoustic instruments (ukulele, xylophone, soft piano, light percussion), ducked by -14dB during voiceover.
-
----
-
-## 4. Shared Timeline Guidelines
-
-- Keep scenes short (4 to 8 seconds each) to maintain young viewers' engagement.
-- Place visual action and key sound effects within the first 0.5s of a scene transition.
-- Large, high-contrast, rounded subtitle text with playful bouncy animations.
-
----
-
-## 5. Animation Code Scaffold (Blender Example)
-
-When generating Blender code in `scenes/scene_XX/scene.py`:
-
-```python
-import bpy
-import math
-
-def setup_scene():
-    bpy.ops.wm.read_factory_settings(use_empty=True)
-    scene = bpy.context.scene
-    scene.render.fps = 30
-    scene.frame_start = 1
-    scene.frame_end = 150  # 5 seconds at 30 fps
-
-def build_environment():
-    # Setup camera, light, and stylized colorful backdrop
-    pass
-
-def animate_character():
-    # Stylized bouncy movement keyframed across frame_start to frame_end
-    pass
-
-if __name__ == "__main__":
-    setup_scene()
-    build_environment()
-    animate_character()
-```
+## Failure checks
+No missing limbs/rigs, no camera through walls, no speech without matching action, no floating feet or hand-prop gaps, no text beyond safe bounds, no disconnected cuts, and no unlicensed character assets. Record quality gates as requested/implemented/not-available rather than inventing results.

@@ -1,0 +1,68 @@
+name: ai-video-sandbox
+services:
+  manim:
+    image: manimcommunity/manim:stable
+    working_dir: /manim
+    volumes:
+      - ./workspace:/manim
+    entrypoint: ["manim"]
+    command: ["--version"]
+    network_mode: none
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+
+  blender:
+    build:
+      context: .
+      dockerfile: docker/blender.Dockerfile
+    working_dir: /workspace
+    volumes:
+      - ./workspace:/workspace
+    command: ["blender", "-b", "--version"]
+    network_mode: none
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    shm_size: 1gb
+
+  remotion:
+    build:
+      context: .
+      dockerfile: docker/remotion.Dockerfile
+    working_dir: /app
+    volumes:
+      - ./workspace/output:/app/output
+    command: ["npx", "remotion", "compositions", "src/index.tsx", "--browser-executable=/usr/bin/chromium"]
+    network_mode: none
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    shm_size: 1gb
+
+  ffmpeg:
+    build:
+      context: .
+      dockerfile: docker/ffmpeg.Dockerfile
+    working_dir: /workspace
+    volumes:
+      - ./workspace:/workspace
+    entrypoint: ["ffmpeg"]
+    command: ["-version"]
+    network_mode: none
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+
+  tts:
+    profiles: ["tts"]
+    build:
+      context: .
+      dockerfile: docker/tts.Dockerfile
+    working_dir: /workspace
+    volumes:
+      - ./workspace:/workspace
+      - tts_models:/root/.cache/huggingface
+    command: ["python", "-c", "import kokoro, torch; print('kokoro OK, torch CUDA:', torch.cuda.is_available())"]
+    network_mode: none
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+
+volumes:
+  tts_models:

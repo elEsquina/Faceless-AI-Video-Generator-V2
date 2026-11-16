@@ -1,0 +1,4 @@
+# This file records the segment order used by Manim.
+file 'file:/manim/media/videos/manim_smoke/480p15/partial_movie_files/ManimSmoke/uncached_00000.mp4'
+file 'file:/manim/media/videos/manim_smoke/480p15/partial_movie_files/ManimSmoke/uncached_00001.mp4'
+file 'file:/manim/media/videos/manim_smoke/480p15/partial_movie_files/ManimSmoke/uncached_00002.mp4'

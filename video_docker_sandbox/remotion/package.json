@@ -1,0 +1,22 @@
+{
+  "name": "ai-video-remotion-sandbox",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "smoke": "remotion render src/index.tsx Demo3D output/remotion.mp4 --codec h264 --concurrency 1 --log verbose --browser-executable=/usr/bin/chromium",
+    "list": "remotion compositions src/index.tsx --browser-executable=/usr/bin/chromium"
+  },
+  "dependencies": {
+    "@react-three/fiber": "9.1.2",
+    "@remotion/cli": "4.0.544",
+    "@remotion/three": "4.0.544",
+    "gsap": "3.13.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "remotion": "4.0.544",
+    "three": "0.175.0"
+  },
+  "devDependencies": {
+    "typescript": "5.8.3"
+  }
+}

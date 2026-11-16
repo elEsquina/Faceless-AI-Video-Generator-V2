@@ -1,71 +1,23 @@
-# Generation Skill: General Explanatory Videos
+# Explanatory Videos: Agent Generation Guide
 
-This guide outlines rules, design language, and code generation standards for general concept, science, business, and tech explanatory videos.
+Video type: `explanatory_videos`. User supplies topic, format and audience; the director selects the engine automatically from installed toolchains. Default candidates: Three.js + GSAP + Remotion for camera-driven 3D explanations and kinetic typography; Manim for math-heavy segments; Blender for physical object animations.
 
----
+## Story and scene plan
+1. Research/verify factual claims when the task requires it; retain references in the job plan. Avoid invented statistics.
+2. Use a hook -> visual mechanism -> worked example -> consequence -> recap arc. Narration should explain what the image cannot already communicate.
+3. Write a scene/shot schedule with start/end time, word cue, specific visible change, camera parameters, captions and effect events. All modalities use one shared timeline.
+4. Provide a simple original style brief: palette, composition, font hierarchy, depth, shadow, outline, transition and scene-to-scene continuity.
 
-## 1. Domain Profile
+## Three.js+Remotion recipe (adapted from claude-animated-shorts)
+- Separate: `story` (frame and shot timing), `world` (geometry/props), `cast` (illustrated billboard or true 3D entities), `camera` (position/look-at/FOV), `post` (outline/DOF/bloom/grade), `audio` (cues).
+- Prefer deterministic frame-indexed animation. If using GSAP for previews, drive its timeline from a deterministic frame clock during rendering; do not allow uncontrolled wall-clock animation inside Remotion.
+- Associate visual reactions/transitions with word-alignment markers; re-time after real TTS word durations are obtained.
+- Create a first/center/last still for each shot and a contact sheet for the whole video. Inspect readability, clipping, depth, ink/outline behavior, and subject focus.
+- Treat source repo's exact bridge look/color values as an optional reference style, not a hard requirement; do not copy its proprietary reference imagery.
+- Keep post-processing in a known order, verify render at intended resolution; check temporary disk capacity before large Remotion bundles.
 
-- **Target Audience**: General public, professionals, students.
-- **Tone**: Professional, engaging, articulate, informative, and crisp.
-- **Narrative Arc**:
-  1. *Hook* (10%): Surprising question, relatable dilemma, or compelling statistic.
-  2. *Core Concept Definition* (25%): The foundational idea broken down simply.
-  3. *Mechanism / Walkthrough* (45%): How it works step-by-step with visual metaphors.
-  4. *Real-world Impact / Application* (15%): Why it matters today.
-  5. *Call-to-Action / Conclusion* (5%): Concise memorable wrap-up.
+## Review loop
+Static checks (TypeScript compile, asset paths, finite coordinates) -> low-res stills -> visual QA with concrete frame-numbered defects -> edit only failing scene -> rerun checks -> preview -> final video with FFmpeg A/V QA. Require evidence for PASS; provide a short missing-capability report if no toolchain exists.
 
----
-
-## 2. Recommended Engine Selection
-
-- **Primary**: **Three.js + GSAP + Remotion (React/TSX)** for modern web motion graphics, isometric 3D illustrations, UI concept animations, and kinetic typography.
-
----
-
-## 3. Script & Audio Pacing
-
-- **Narration Speed**: Moderate to brisk (approx. 140–165 words per minute).
-- **Voice Style**: Confident, conversational, authoritative, and energetic.
-- **Sound Effects (SFX)**: Subtle, modern UI sounds (digital clicks, smooth whooshes, soft pops, camera shutter clicks).
-- **Background Music (BGM)**: Modern lo-fi, electronic ambient, or subtle corporate indie music ducked by -16dB during speech.
-
----
-
-## 4. Shared Timeline Guidelines
-
-- Synchronize motion graphics transitions with narration keywords.
-- Text splash / captions should highlight 1–3 key terms per phrase rather than dense sentences.
-- Maintain consistent visual pacing: one main concept or visual transformation per 5–10 second block.
-
----
-
-## 5. Animation Code Scaffold (Remotion / TSX Example)
-
-When generating Remotion components in `scenes/scene_XX/Scene.tsx`:
-
-```tsx
-import React from 'react';
-import { interpolate, useCurrentFrame, useVideoConfig } from 'remotion';
-
-export const ExplainerScene: React.FC = () => {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-
-  const opacity = interpolate(frame, [0, 15], [0, 1], {
-    extrapolateRight: 'clamp',
-  });
-
-  const cardY = interpolate(frame, [0, 20], [50, 0], {
-    extrapolateRight: 'clamp',
-  });
-
-  return (
-    <div style={{ flex: 1, backgroundColor: '#0f172a', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-      <div style={{ opacity, transform: `translateY(${cardY}px)`, color: '#ffffff', fontSize: 48, fontWeight: 700 }}>
-        Visual Concept Card
-      </div>
-    </div>
-  );
-};
-```
+## Cost controls
+Reuse scene code and original local assets, batch stills, avoid rendering full video until story and camera are approved, regenerate only changed scenes, prefer offline sound synthesis/local TTS where installed. Video engine choice is determined by requirement, not hardcoded by category.
