@@ -1,26 +1,101 @@
-# Kids Stories: Agent Generation Guide
+# Kids Stories: Production Animation Guide
 
-Video type: `kids_stories`. Optimize for clarity, age-appropriate plots, safe themes, visible character reactions and consistent character identities. Do not infer a mandatory engine from the type.
+Video type: `kids_stories`. This guide instructs external AI Directors on creating character-driven, animated children's stories with visual continuity, age-appropriate pacing, and high emotional engagement.
 
-## Director decision
-- Prefer Blender/Python for fully 3D acting when a **licensed, locally installed** rig/asset and renderer exist.
-- Prefer Three.js + Remotion for illustrated 2.5D stories, camera glides, and stylized billboards.
-- Roblox-specific characters, emotes, hairstyles and sets are NOT part of this skill. The upstream NoCodeHack engine requires its own assets and Roblox Studio MCP setup; do not claim they are available.
-- Select an engine per scene based on available tools and asset budget; write the decision and fallback into `plan.json`.
+---
 
-## Story-to-animation contract
-Plan a clear hook, goal, escalating obstacle, emotional turn and resolution. Generate structured scene beats with `scene_id`, `start_s`, `duration_s`, `setting`, `cast`, `action`, `reaction`, `camera`, `narration`, `sfx`, and `asset_refs`. Each speaking character should trigger a listener reaction when helpful. Every scene needs purposeful motion, but do not add rapid cuts merely to fill time. Maintain location, scale, costume, eye-line and lighting continuity.
+## 1. Engine Selection Policy
 
-## Blender-style structured route (adapted from nocodehack)
-1. Write a versioned `story.json`/job plan; inspect the actual Blender adapter capabilities before emitting animation instructions.
-2. Lint the story for missing props, undeclared cast, impossible/overlapping times, bad frame bounds and unknown action types.
-3. Perform **geometry gates** on each constructed scene before video render: feet-ground contact, object-hand contact, object collision, camera framing, gaze/face visibility, and character path intersection. Require an explicit PASS/FAIL report; only call it PASS after running an implemented check.
-4. Render low-cost draft frames/contact sheet; review entrance, prop visibility, reaction framing, emotional peak and shot variation.
-5. Repair only failed scenes. Repeat validation after every repair. Render preview, then final only with user permission.
-6. Mix voice/SFX/music after picture timing is locked; caption policy follows the user's settings, not the upstream default.
+- **Blender (Cycles Engine, Headless)**: Primary choice for 3D stylized character acting, environmental depth, procedural nature, and physical character interactions.
+- **Three.js + Remotion**: Alternative choice for 2.5D illustrated cutout aesthetics, kinetic picture books, and camera-guided motion graphics.
+- **Selection Rule**: The director selects the engine per scene based on visual requirements. Write the engine choice into `storyboard.json` and `plan.json`.
 
-## Three.js/Remotion-style route (adapted from mromidev)
-Use scene timeline / frame-indexed camera keys / separate world, characters and post layers. Keep characters original and reference visuals for style study only. For each major beat generate still frames, compare against a written style brief, fix occlusion/silhouettes, then render. Scale pixel-space effects with export resolution. Never hard-code source-specific bridge characters or lighting as global requirements.
+---
 
-## Failure checks
-No missing limbs/rigs, no camera through walls, no speech without matching action, no floating feet or hand-prop gaps, no text beyond safe bounds, no disconnected cuts, and no unlicensed character assets. Record quality gates as requested/implemented/not-available rather than inventing results.
+## 2. Structured Narrative Arc
+
+Every story must follow a clear 5-stage beat schedule:
+1. **Hook & Setting (0–20% duration)**: Introduce the main character, their peaceful status quo, and distinct personality.
+2. **The Inciting Incident / Goal (20–40% duration)**: Introduce a companion in need or a clear obstacle (e.g. lost turtle needing guidance).
+3. **The Journey / Escalating Obstacle (40–70% duration)**: The characters navigate a challenge together; visible emotional reactions and mutual cooperation.
+4. **The Climax & Breakthrough (70–85% duration)**: Overcoming the obstacle with teamwork and kindness.
+5. **Warm Resolution & Moral (85–100% duration)**: A comforting concluding image, warm smiles, and positive reinforcement.
+
+---
+
+## 3. Blender Headless Production Standards
+
+### A. Rendering Configuration
+Headless Blender in Docker requires Cycles on CPU with denoising disabled to avoid missing GPU/OpenGL display dependencies:
+```python
+import bpy
+
+# Set Render Engine
+scene = bpy.context.scene
+scene.render.engine = 'CYCLES'
+scene.cycles.device = 'CPU'
+scene.cycles.use_denoising = False  # Avoid OpenImageDenoise build errors in headless containers
+scene.cycles.samples = 8            # Fast, crisp sample count for animated shorts
+
+# Resolution & Frame Rate
+scene.render.resolution_x = 1280
+scene.render.resolution_y = 720
+scene.render.resolution_percentage = 100
+scene.render.fps = 30
+
+# Output settings
+scene.render.image_settings.file_format = 'FFMPEG'
+scene.render.ffmpeg.format = 'MPEG4'
+scene.render.ffmpeg.codec = 'H264'
+scene.render.ffmpeg.constant_rate_factor = 'HIGH'
+scene.render.ffmpeg.ffmpeg_preset = 'REALTIME'
+```
+
+### B. Procedural Stylized Character Creation
+When external rigs are not bundled, generate charming procedural geometric characters:
+- **Rabbit Archetype**: Rounded body sphere, head sphere, long ears with forward tilt, pink nose, hopping translation with vertical sine-bounce and ear flop rotations.
+- **Turtle Archetype**: Flattened olive-green shell hemisphere, round head with gentle bobbing, 4 stubby flippers/legs moving alternately.
+
+```python
+def create_rabbit(name="Rabbit", location=(0, 0, 0)):
+    # Body
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.7, location=(location[0], location[1], location[2] + 0.7))
+    body = bpy.context.active_object
+    body.name = f"{name}_Body"
+    
+    # Head
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.45, location=(location[0], location[1] + 0.3, location[2] + 1.5))
+    head = bpy.context.active_object
+    head.name = f"{name}_Head"
+    
+    # Ears
+    for side in (-0.2, 0.2):
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.09, depth=0.7, location=(location[0] + side, location[1] + 0.3, location[2] + 2.0))
+        ear = bpy.context.active_object
+        ear.rotation_euler = (0.2, side * 0.4, 0)
+        ear.name = f"{name}_Ear_{'L' if side < 0 else 'R'}"
+```
+
+### C. Environment Generation
+Build vibrant storybook environments:
+- **Ground**: Displaced plane with soft green grass material.
+- **Sky**: Warm blue/golden gradient background with soft sun lamp (`color=(1.0, 0.95, 0.85)`, `energy=3.0`).
+- **Props**: Stylized low-poly trees (brown cylinder trunks, green coned foliage) and smooth river stones.
+
+---
+
+## 4. Geometry & Continuity Quality Gates
+
+Before rendering final passes:
+1. **Ground Contact Check**: All characters must maintain $z \ge 0$ (no sinking beneath the ground plane).
+2. **Eye-line Consistency**: Characters facing each other must have matching gaze angles (look-at vectors aligned).
+3. **No Mesh Intersection**: Check bounding spheres between rabbit and turtle ($dist(c_1, c_2) \ge r_1 + r_2$).
+4. **Caption Clearance**: Avoid crucial character actions in the lower 18% of the viewport ($y \le -2.0$ in camera projection).
+
+---
+
+## 5. Review & Repair Instructions
+
+1. If keyframe extraction shows character clipping, adjust `camera.location` or character translation keyframes.
+2. If render logs report `OpenImageDenoiser` error, confirm `bpy.context.scene.cycles.use_denoising = False`.
+3. If pacing feels rushed, increase transition holds on key character emotional reactions.

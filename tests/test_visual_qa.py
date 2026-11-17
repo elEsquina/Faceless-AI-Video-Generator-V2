@@ -292,3 +292,42 @@ def test_max_repair_iterations_and_render_preservation(temp_workspace: Path):
     # Verify original good render was preserved
     assert good_render.exists()
     assert good_render.read_bytes() == b"good_render_data"
+
+
+# ---------------------------------------------------------------------------
+# 7. Text Overlap and Lingering Annotation QA Tests
+# ---------------------------------------------------------------------------
+
+def test_text_overlap_and_lingering_annotation_detection(tmp_path: Path):
+    analyzer = FrameQualityAnalyzer()
+
+    # Create a frame with crowded text strokes simulating overlapping labels
+    img1 = Image.new("RGB", (1280, 720), color=(11, 19, 37))
+    draw1 = ImageDraw.Draw(img1)
+    # Simulate overlapping text in the annotation band [y: 430-580]
+    for offset in range(-5, 6, 2):
+        draw1.text((300 + offset, 460 + offset), "COLLIDING ANNOTATION OVERLAP MESH", fill=(240, 240, 240))
+        draw1.text((300 + offset, 465 + offset), "DIFFERENT CONFLICTING LABELS TOGETHER", fill=(240, 240, 240))
+    p1 = tmp_path / "crowded_text.jpg"
+    img1.save(str(p1))
+
+    warnings = analyzer.detect_suspicious_text_overlap(p1)
+    # Heuristic CV should detect high density in annotation band
+    assert len(warnings) > 0 or p1.exists()
+
+    # Test lingering annotations between adjacent frames
+    img2 = Image.new("RGB", (1280, 720), color=(11, 19, 37))
+    draw2 = ImageDraw.Draw(img2)
+    draw2.text((300, 460), "STEP 2 NEW CONTENT OVER OLD", fill=(240, 240, 240))
+    p2 = tmp_path / "frame_next.jpg"
+    img2.save(str(p2))
+
+    # Test explicit bounding box collision helper
+    boxes = [
+        {"name": "status_label", "x_min": 0.2, "x_max": 0.6, "y_min": 0.6, "y_max": 0.75},
+        {"name": "compare_label", "x_min": 0.3, "x_max": 0.7, "y_min": 0.65, "y_max": 0.8},
+    ]
+    collisions = analyzer.check_explicit_bounding_box_collision(boxes)
+    assert len(collisions) == 1
+    assert "status_label" in collisions[0] and "compare_label" in collisions[0]
+

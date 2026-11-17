@@ -30,6 +30,25 @@ class VideoCompositor:
         )
         self.compose_file = compose_file or (self.sandbox_dir / "compose.yaml")
         self.workspace_dir = self.sandbox_dir / "workspace"
+        self._cached_encoder: Optional[str] = None
+
+    def get_h264_encoder(self) -> str:
+        """Detect and return the best available H.264 encoder (h264_nvenc with libx264 fallback)."""
+        if self._cached_encoder:
+            return self._cached_encoder
+
+        # Probe NVENC capability
+        test_args = [
+            "-f", "lavfi", "-i", "testsrc=duration=0.1:size=64x64:rate=30",
+            "-c:v", "h264_nvenc",
+            "-f", "null", "-",
+        ]
+        res = self._run_ffmpeg(test_args, timeout=10)
+        if res.returncode == 0:
+            self._cached_encoder = "h264_nvenc"
+        else:
+            self._cached_encoder = "libx264"
+        return self._cached_encoder
 
     def _run_ffmpeg(
         self,
@@ -115,7 +134,7 @@ class VideoCompositor:
                 "-f", "concat",
                 "-safe", "0",
                 "-i", f"/workspace/{rel_concat}",
-                "-c:v", "libx264",
+                "-c:v", self.get_h264_encoder(),
                 "-pix_fmt", "yuv420p",
                 f"/workspace/{rel_out}",
             ]
@@ -313,7 +332,7 @@ class VideoCompositor:
             "-y",
             "-i", f"/workspace/{rel_vid}",
             "-vf", f"ass=/workspace/{rel_sub}",
-            "-c:v", "libx264",
+            "-c:v", self.get_h264_encoder(),
             "-pix_fmt", "yuv420p",
             "-c:a", "copy",
             f"/workspace/{rel_out}",
@@ -359,7 +378,7 @@ class VideoCompositor:
         if captions_path and captions_path.exists():
             rel_sub = captions_path.resolve().relative_to(self.workspace_dir.resolve())
             cmd_args.extend(["-vf", f"ass=/workspace/{rel_sub}"])
-            cmd_args.extend(["-c:v", "libx264", "-pix_fmt", "yuv420p"])
+            cmd_args.extend(["-c:v", self.get_h264_encoder(), "-pix_fmt", "yuv420p"])
         else:
             cmd_args.extend(["-c:v", "copy"])
 

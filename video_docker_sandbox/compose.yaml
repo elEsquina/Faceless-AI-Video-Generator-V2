@@ -30,7 +30,9 @@ services:
       dockerfile: docker/remotion.Dockerfile
     working_dir: /app
     volumes:
+      - ./workspace:/workspace
       - ./workspace/output:/app/output
+      - ./remotion/src:/app/src
     command: ["npx", "remotion", "compositions", "src/index.tsx", "--browser-executable=/usr/bin/chromium"]
     network_mode: none
     security_opt: ["no-new-privileges:true"]

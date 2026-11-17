@@ -23,6 +23,7 @@ from ai_video_pipeline.schemas.job_schemas import (
 from ai_video_pipeline.schemas.models import (
     AnimationEngine,
     AspectRatio,
+    SceneSpec,
     VideoCategory,
 )
 
@@ -348,3 +349,79 @@ def test_execute_job_subprocess_failure_and_retry(temp_workspace: Path):
             retry_res = tools.retry_scene(job_id, "scene_001")
             assert retry_res["success"] is True
             assert retry_res["scene_id"] == "scene_001"
+
+
+def test_remotion_and_blender_command_construction(temp_workspace: Path):
+    """Verify that ParserOmega correctly formats arguments for Remotion and Blender engines."""
+    omega = ParserOmega(sandbox_dir=temp_workspace)
+    job_dir = temp_workspace / "jobs" / "test_engines"
+    scenes_dir = job_dir / "scenes"
+    renders_dir = job_dir / "renders"
+    scenes_dir.mkdir(parents=True, exist_ok=True)
+    renders_dir.mkdir(parents=True, exist_ok=True)
+
+    # 1. Remotion Scene
+    tsx_file = scenes_dir / "scene_001.tsx"
+    tsx_file.write_text("export default function Scene() { return null; }")
+    remotion_spec = SceneSpec(
+        scene_id="scene_001",
+        index=0,
+        engine=AnimationEngine.THREE_JS_REMOTION,
+        start_time=0.0,
+        end_time=5.0,
+        narration_text="Narration 1",
+        visual_description="Visual 1",
+        code_file="scene_001.tsx",
+    )
+
+    with patch.object(DockerEngineRunner, "run_docker") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+        # Touch expected output
+        (renders_dir / "scene_001.mp4").touch()
+        res = omega.execute_scene(job_dir, remotion_spec)
+        assert res["success"] is True
+        args = mock_run.call_args[0][0]
+        assert "remotion" in args
+        assert "npx" in args
+        assert "--frames=0-149" in args  # 5.0s * 30fps = 150 frames (0 to 149)
+
+    # 2. Blender Scene
+    py_file = scenes_dir / "scene_002.py"
+    py_file.write_text("import bpy\nprint('hello')")
+    blender_spec = SceneSpec(
+        scene_id="scene_002",
+        index=1,
+        engine=AnimationEngine.BLENDER,
+        start_time=0.0,
+        end_time=10.0,
+        narration_text="Narration 2",
+        visual_description="Visual 2",
+        code_file="scene_002.py",
+    )
+
+    with patch.object(DockerEngineRunner, "run_docker") as mock_run_b:
+        mock_run_b.return_value = MagicMock(returncode=0)
+        (renders_dir / "scene_002.mp4").touch()
+        res_b = omega.execute_scene(job_dir, blender_spec)
+        assert res_b["success"] is True
+        args_b = mock_run_b.call_args[0][0]
+        assert "blender" in args_b
+        assert "--frames=300" in args_b
+        assert "--fps=30" in args_b
+
+
+def test_video_compositor_h264_encoder_fallback(temp_workspace: Path):
+    """Verify that VideoCompositor gracefully falls back to libx264 when NVENC is unavailable."""
+    from ai_video_pipeline.media.compositor import VideoCompositor
+    compositor = VideoCompositor(sandbox_dir=temp_workspace)
+
+    with patch.object(compositor, "_run_ffmpeg") as mock_run:
+        # Simulate NVENC probe failing
+        mock_run.return_value = MagicMock(returncode=1)
+        encoder = compositor.get_h264_encoder()
+        assert encoder == "libx264"
+        assert compositor._cached_encoder == "libx264"
+
+        # Subsequent call returns cached value
+        assert compositor.get_h264_encoder() == "libx264"
+

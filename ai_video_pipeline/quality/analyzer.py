@@ -54,22 +54,147 @@ class FrameQualityAnalyzer:
                 return 100.0
             return float(np.mean(np.abs(arr1 - arr2)))
 
+    def detect_suspicious_text_overlap(
+        self,
+        img_path: Path,
+        band_y_fraction: Tuple[float, float] = (0.55, 0.88),
+    ) -> List[str]:
+        """
+        Heuristic CV check for suspicious overlapping text or colliding glyphs.
+        Scans annotation bands for abnormal stroke density and absence of character separation.
+        Note: Generic pixel checks cannot guarantee 100% detection of all collisions;
+        this serves as an automated alert for agent visual inspection.
+        """
+        warnings: List[str] = []
+        if not img_path.exists():
+            return warnings
+
+        try:
+            with Image.open(img_path) as im:
+                gray = np.array(im.convert("L"))
+                h, w = gray.shape
+                y_start = int(h * band_y_fraction[0])
+                y_end = int(h * band_y_fraction[1])
+                band = gray[y_start:y_end, :]
+
+                # Find bright pixels against dark background (text strokes)
+                bg_level = float(np.percentile(band, 15))
+                text_mask = band > (bg_level + 40.0)
+
+                # Check horizontal stroke projection in text band
+                vert_prof = np.sum(text_mask, axis=1)  # rows with text
+                horiz_prof = np.sum(text_mask, axis=0)  # cols with text
+
+                # If there are active text lines, inspect character density
+                active_rows = np.where(vert_prof > (w * 0.02))[0]
+                if len(active_rows) > 0:
+                    # Look for dense clusters where characters might be overlapping
+                    # by checking contiguous active columns without inter-word / inter-char gaps
+                    active_cols = (horiz_prof > 4).astype(int)
+                    # Check vertical stroke crowding in multi-line regions
+                    row_density = vert_prof[active_rows] / float(w)
+                    if np.any(row_density > 0.45):
+                        warnings.append(
+                            f"Suspiciously high horizontal text stroke density ({row_density.max():.2f}) "
+                            f"in annotation band [y: {y_start}-{y_end}]; possible overlapping text or un-cleared label."
+                        )
+        except Exception:
+            pass
+
+        return warnings
+
+    def detect_lingering_annotations(
+        self,
+        prev_img_path: Path,
+        curr_img_path: Path,
+        band_y_fraction: Tuple[float, float] = (0.55, 0.88),
+    ) -> List[str]:
+        """
+        Compare adjacent transition frames for lingering annotations that fail to clear
+        when a new annotation or status update appears.
+        """
+        warnings: List[str] = []
+        if not prev_img_path.exists() or not curr_img_path.exists():
+            return warnings
+
+        try:
+            with Image.open(prev_img_path) as im1, Image.open(curr_img_path) as im2:
+                g1 = np.array(im1.convert("L"), dtype=float)
+                g2 = np.array(im2.convert("L"), dtype=float)
+                if g1.shape != g2.shape:
+                    return warnings
+
+                h, w = g1.shape
+                y_start = int(h * band_y_fraction[0])
+                y_end = int(h * band_y_fraction[1])
+
+                band1 = g1[y_start:y_end, :]
+                band2 = g2[y_start:y_end, :]
+
+                # Text masks
+                mask1 = band1 > 60.0
+                mask2 = band2 > 60.0
+
+                # Residual overlap: pixels active in both frames where stroke patterns changed
+                overlap = mask1 & mask2
+                diff = np.abs(band1 - band2)
+
+                # Significant difference in annotation zone while preserving old strokes
+                if np.sum(overlap) > (band1.size * 0.08) and np.mean(diff[overlap]) > 25.0:
+                    warnings.append(
+                        f"Potential lingering annotation between frames: text strokes persist and collide "
+                        f"across transition in band [y: {y_start}-{y_end}]."
+                    )
+        except Exception:
+            pass
+
+        return warnings
+
+    def check_explicit_bounding_box_collision(
+        self,
+        boxes: List[Dict[str, float]],
+    ) -> List[str]:
+        """
+        Detect geometric collisions using explicit 2D bounding boxes when scene metadata is available.
+        Each box dict: {"name": str, "x_min": float, "x_max": float, "y_min": float, "y_max": float}
+        """
+        collisions: List[str] = []
+        n = len(boxes)
+        for i in range(n):
+            for j in range(i + 1, n):
+                b1 = boxes[i]
+                b2 = boxes[j]
+                # Check AABB intersection
+                overlap_x = max(0.0, min(b1["x_max"], b2["x_max"]) - max(b1["x_min"], b2["x_min"]))
+                overlap_y = max(0.0, min(b1["y_max"], b2["y_max"]) - max(b1["y_min"], b2["y_min"]))
+                if overlap_x > 0.05 and overlap_y > 0.05:
+                    collisions.append(
+                        f"Explicit text bounding box collision detected between '{b1.get('name', i)}' "
+                        f"and '{b2.get('name', j)}' (overlap: {overlap_x:.2f} x {overlap_y:.2f})."
+                    )
+        return collisions
+
     def evaluate_scene(
         self,
         scene: SceneSpec,
         frames: Dict[str, Path],
         video_info: Dict[str, Any],
         expected_aspect_ratio: AspectRatio = AspectRatio.LANDSCAPE_16_9,
+        text_bounding_boxes: Optional[List[Dict[str, float]]] = None,
     ) -> SceneQAMetricsModel:
         """
-        Evaluate technical visual quality across start, middle, and end scene keyframes.
+        Evaluate technical visual quality across start, transition, middle, and end keyframes.
         """
         issues: List[str] = []
         is_blank = False
         is_frozen = False
 
         frame_metrics: Dict[str, Dict[str, Any]] = {}
-        for key in ("start", "middle", "end"):
+        ordered_keys = [k for k in ("start", "transition_q1", "middle", "transition_q3", "end") if k in frames]
+        if not ordered_keys:
+            ordered_keys = list(frames.keys())
+
+        for key in ordered_keys:
             if key in frames and frames[key].exists():
                 m = self.analyze_single_frame(frames[key])
                 frame_metrics[key] = m
@@ -78,6 +203,25 @@ class FrameQualityAnalyzer:
                     issues.append(f"Detected blank or empty frame at {key} keyframe (mean={m['mean_luminance']}, std={m['std_contrast']})")
                 elif m["is_overexposed"]:
                     issues.append(f"Detected overexposed frame at {key} keyframe (mean={m['mean_luminance']})")
+
+                # Run text overlap heuristic on keyframe
+                overlap_warnings = self.detect_suspicious_text_overlap(frames[key])
+                for w in overlap_warnings:
+                    issues.append(f"[{key}] {w}")
+
+        # Lingering annotation check across adjacent transition frames
+        for i in range(len(ordered_keys) - 1):
+            k_prev = ordered_keys[i]
+            k_curr = ordered_keys[i + 1]
+            if k_prev in frames and k_curr in frames:
+                lingering = self.detect_lingering_annotations(frames[k_prev], frames[k_curr])
+                for lw in lingering:
+                    issues.append(f"[{k_prev}->{k_curr}] {lw}")
+
+        # Explicit bounding box collision check if metadata is supplied
+        if text_bounding_boxes:
+            box_collisions = self.check_explicit_bounding_box_collision(text_bounding_boxes)
+            issues.extend(box_collisions)
 
         # Compute average scene luminance and contrast across available frames
         if frame_metrics:
@@ -130,12 +274,15 @@ class FrameQualityAnalyzer:
         if abs(duration - planned_dur) > 1.5:
             issues.append(f"Duration mismatch: planned {planned_dur:.2f}s, rendered {duration:.2f}s")
 
-        # Determine overall status
+        # Determine overall status:
+        # Critical defects (blank frame, wrong aspect ratio) fail;
+        # Suspicious overlap / lingering annotation alerts surface as warnings for agent review.
         status = "passed"
-        if is_blank or not aspect_ok:
+        has_critical = is_blank or not aspect_ok or is_frozen
+        if has_critical:
             status = "failed"
-        elif is_frozen or issues:
-            status = "warning" if len(issues) == 1 and not is_frozen else "failed"
+        elif issues:
+            status = "warning"
 
         evidence = {k: str(v) for k, v in frames.items()}
 
@@ -180,7 +327,19 @@ class ContactSheetGenerator:
         if not scenes:
             raise ValueError("No scene frames provided for contact sheet")
 
-        cols = 3  # Start, Middle, End
+        # Determine unique ordered column keys across scenes
+        preferred_order = ["start", "transition_q1", "middle", "transition_q3", "end"]
+        all_keys = set()
+        for f_dict in scene_frames.values():
+            all_keys.update(f_dict.keys())
+        cols_keys = [k for k in preferred_order if k in all_keys]
+        for k in sorted(all_keys):
+            if k not in cols_keys:
+                cols_keys.append(k)
+        if not cols_keys:
+            cols_keys = ["start", "middle", "end"]
+
+        cols = len(cols_keys)
         rows = len(scenes)
 
         padding = 16
@@ -208,7 +367,7 @@ class ContactSheetGenerator:
             status_color = (80, 220, 100) if metrics and metrics.status == "passed" else (240, 70, 70)
             draw.text((padding, y_offset), f"Scene: {scene_id}  {status_text}", fill=status_color)
 
-            for c_idx, key in enumerate(("start", "middle", "end")):
+            for c_idx, key in enumerate(cols_keys):
                 x_pos = padding + c_idx * (thumb_width + padding)
                 y_pos = y_offset + 20
 

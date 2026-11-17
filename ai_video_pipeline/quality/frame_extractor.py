@@ -92,11 +92,30 @@ class KeyframeExtractor:
         except OSError:
             pass
 
-        # Determine safe timestamps within scene duration
+        # Determine safe timestamps within scene duration:
         dur = max(0.5, scene_duration)
+        try:
+            rel_vid = video_path.resolve().relative_to(self.workspace_dir.resolve())
+            p_cmd = [
+                "docker", "compose", "-f", str(self.compose_file),
+                "run", "--rm",
+                "--entrypoint", "ffprobe",
+                "ffmpeg",
+                "-v", "error",
+                "-show_entries", "format=duration",
+                "-of", "default=noprint_wrappers=1:nokey=1",
+                f"/workspace/{rel_vid}",
+            ]
+            p_res = subprocess.run(p_cmd, cwd=str(self.sandbox_dir), capture_output=True, text=True, timeout=15)
+            if p_res.returncode == 0 and p_res.stdout.strip():
+                real_dur = float(p_res.stdout.strip())
+                dur = min(dur, real_dur)
+        except Exception:
+            pass
+
         t_start = min(0.5, dur * 0.1)
         t_mid = dur * 0.5
-        t_end = max(t_start + 0.1, dur - 0.5)
+        t_end = max(t_start + 0.1, dur - 0.25)
 
         frames: Dict[str, Path] = {}
 
@@ -105,17 +124,34 @@ class KeyframeExtractor:
         self.extract_frame(video_path, t_start, start_img)
         frames["start"] = start_img
 
-        # 2. Middle frame
+        # 2. Q1 Transition frame (for scenes >= 4s)
+        if dur >= 4.0:
+            t_q1 = dur * 0.35
+            q1_img = output_dir / "frame_transition_q1.jpg"
+            self.extract_frame(video_path, t_q1, q1_img)
+            frames["transition_q1"] = q1_img
+
+        # 3. Middle frame
         mid_img = output_dir / "frame_middle.jpg"
         self.extract_frame(video_path, t_mid, mid_img)
         frames["middle"] = mid_img
 
-        # 3. End frame
+        # 4. Q3 Transition frame (for scenes >= 4s)
+        if dur >= 4.0:
+            t_q3 = dur * 0.75
+            q3_img = output_dir / "frame_transition_q3.jpg"
+            self.extract_frame(video_path, t_q3, q3_img)
+            frames["transition_q3"] = q3_img
+
+        # 5. End frame (with fallback timestamp if exact boundary fails)
         end_img = output_dir / "frame_end.jpg"
-        self.extract_frame(video_path, t_end, end_img)
+        try:
+            self.extract_frame(video_path, t_end, end_img)
+        except Exception:
+            self.extract_frame(video_path, max(t_start + 0.1, dur * 0.8), end_img)
         frames["end"] = end_img
 
-        # 4. Optional extra anomaly timestamps
+        # 6. Optional extra anomaly timestamps
         if additional_timestamps:
             for idx, t in enumerate(additional_timestamps, 1):
                 safe_t = max(0.0, min(dur - 0.1, t))

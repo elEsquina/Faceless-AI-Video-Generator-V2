@@ -316,6 +316,9 @@ class ParserOmega:
             }
 
         elif scene.engine == AnimationEngine.BLENDER:
+            target_out = f"/workspace/{rel_renders}/{scene.scene_id}.mp4"
+            duration = max(1.0, float(scene.end_time - scene.start_time))
+            total_frames = max(1, int(round(duration * 30)))
             args = [
                 "run",
                 "--rm",
@@ -323,9 +326,13 @@ class ParserOmega:
                 "blender",
                 "-b",
                 "-t",
-                "2",
+                "8",
                 "-P",
                 f"/workspace/{rel_code}",
+                "--",
+                f"--output={target_out}",
+                f"--frames={total_frames}",
+                "--fps=30",
             ]
             proc = self.runner.run_docker(args, log_file=log_path)
             if proc.returncode != 0:
@@ -336,6 +343,26 @@ class ParserOmega:
                     "error": f"Blender render failed with exit code {proc.returncode}",
                     "log_file": str(log_path),
                 }
+
+            if not final_scene_output.exists():
+                cand = workspace_dir / rel_renders / f"{scene.scene_id}.mp4"
+                if cand.exists():
+                    shutil.copy2(cand, final_scene_output)
+                else:
+                    cands = list(renders_dir.glob(f"{scene.scene_id}*.mp4"))
+                    if not cands and (workspace_dir / rel_renders).exists():
+                        cands = list((workspace_dir / rel_renders).glob(f"{scene.scene_id}*.mp4"))
+                    if cands:
+                        shutil.copy2(cands[0], final_scene_output)
+                    else:
+                        return {
+                            "scene_id": scene.scene_id,
+                            "success": False,
+                            "output_path": None,
+                            "error": f"Blender completed but output file not found at {final_scene_output}",
+                            "log_file": str(log_path),
+                        }
+
             return {
                 "scene_id": scene.scene_id,
                 "success": True,
@@ -345,7 +372,35 @@ class ParserOmega:
             }
 
         elif scene.engine == AnimationEngine.THREE_JS_REMOTION:
-            args = ["run", "--rm", "remotion", "npm", "run", "smoke"]
+            duration = max(1.0, float(scene.end_time - scene.start_time))
+            fps = 30
+            total_frames = max(1, int(round(duration * fps)))
+            end_frame = total_frames - 1
+
+            # Stage code to remotion src/active_scene.tsx
+            remotion_src = self.runner.sandbox_dir / "remotion" / "src"
+            remotion_src.mkdir(parents=True, exist_ok=True)
+            active_scene_file = remotion_src / "active_scene.tsx"
+            shutil.copy2(code_path, active_scene_file)
+
+            workspace_rel_out = f"/workspace/{rel_renders}/{scene.scene_id}.mp4"
+            args = [
+                "run",
+                "--rm",
+                "remotion",
+                "npx",
+                "remotion",
+                "render",
+                "src/index.tsx",
+                "MainScene",
+                workspace_rel_out,
+                f"--frames=0-{end_frame}",
+                "--codec",
+                "h264",
+                "--concurrency",
+                "1",
+                "--browser-executable=/usr/bin/chromium",
+            ]
             proc = self.runner.run_docker(args, log_file=log_path)
             if proc.returncode != 0:
                 return {
@@ -355,6 +410,20 @@ class ParserOmega:
                     "error": f"Remotion render failed with exit code {proc.returncode}",
                     "log_file": str(log_path),
                 }
+
+            if not final_scene_output.exists():
+                cand = workspace_dir / rel_renders / f"{scene.scene_id}.mp4"
+                if cand.exists():
+                    shutil.copy2(cand, final_scene_output)
+                else:
+                    return {
+                        "scene_id": scene.scene_id,
+                        "success": False,
+                        "output_path": None,
+                        "error": f"Remotion completed but output file not found at {final_scene_output}",
+                        "log_file": str(log_path),
+                    }
+
             return {
                 "scene_id": scene.scene_id,
                 "success": True,

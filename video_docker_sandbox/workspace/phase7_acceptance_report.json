@@ -1,0 +1,38 @@
+[
+  {
+    "test_id": "Test_A_Kids_Story",
+    "job_id": "6c88d036",
+    "video_type": "kids_animated_story",
+    "engine": "blender",
+    "total_duration_s": 38.62,
+    "render_duration_s": 28.68,
+    "output_mp4": "/home/othmane/Faceless_V2/video_docker_sandbox/workspace/jobs/6c88d036/output/final.mp4",
+    "filesize_bytes": 4335295,
+    "video_duration": 30.0,
+    "status": "PASSED"
+  },
+  {
+    "test_id": "Test_B_General_Explanatory",
+    "job_id": "f474cb30",
+    "video_type": "general_explanatory",
+    "engine": "three_js_remotion",
+    "total_duration_s": 129.12,
+    "render_duration_s": 120.43,
+    "output_mp4": "/home/othmane/Faceless_V2/video_docker_sandbox/workspace/jobs/f474cb30/output/final.mp4",
+    "filesize_bytes": 1161828,
+    "video_duration": 30.0,
+    "status": "PASSED"
+  },
+  {
+    "test_id": "Test_C_CS_Math",
+    "job_id": "01fc07e9",
+    "video_type": "cs_math_educational",
+    "engine": "manim",
+    "total_duration_s": 51.86,
+    "render_duration_s": 41.1,
+    "output_mp4": "/home/othmane/Faceless_V2/video_docker_sandbox/workspace/jobs/01fc07e9/output/final.mp4",
+    "filesize_bytes": 931931,
+    "video_duration": 25.8,
+    "status": "PASSED"
+  }
+]
