@@ -1,0 +1,3 @@
+file '/workspace/jobs/6f455db9/renders/scene_001.mp4'
+file '/workspace/jobs/6f455db9/renders/scene_002.mp4'
+file '/workspace/jobs/6f455db9/renders/scene_003.mp4'

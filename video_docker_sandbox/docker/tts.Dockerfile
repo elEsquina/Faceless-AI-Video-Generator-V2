@@ -5,5 +5,5 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   espeak-ng libsndfile1 ffmpeg ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch==2.6.0
-RUN pip install --no-cache-dir kokoro==0.9.4 soundfile
+RUN pip install --no-cache-dir kokoro==0.9.4 soundfile && python -m spacy download en_core_web_sm
 WORKDIR /workspace

@@ -1,0 +1,7 @@
+# This file records the segment order used by Manim.
+file 'file:/manim/jobs/80abf744/renders/manim_out/videos/scene_002/480p15/partial_movie_files/GradientDescentStepsScene/uncached_00000.mp4'
+file 'file:/manim/jobs/80abf744/renders/manim_out/videos/scene_002/480p15/partial_movie_files/GradientDescentStepsScene/uncached_00001.mp4'
+file 'file:/manim/jobs/80abf744/renders/manim_out/videos/scene_002/480p15/partial_movie_files/GradientDescentStepsScene/uncached_00002.mp4'
+file 'file:/manim/jobs/80abf744/renders/manim_out/videos/scene_002/480p15/partial_movie_files/GradientDescentStepsScene/uncached_00003.mp4'
+file 'file:/manim/jobs/80abf744/renders/manim_out/videos/scene_002/480p15/partial_movie_files/GradientDescentStepsScene/uncached_00004.mp4'
+file 'file:/manim/jobs/80abf744/renders/manim_out/videos/scene_002/480p15/partial_movie_files/GradientDescentStepsScene/uncached_00005.mp4'
