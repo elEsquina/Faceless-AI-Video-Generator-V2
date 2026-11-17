@@ -62,6 +62,26 @@ def create_pipeline_mcp_server(tools: Optional[PipelineMCPTools] = None) -> Fast
         """Re-execute audio, captions, and mixing postproduction without re-rendering scenes."""
         return tools_instance.retry_postproduction(job_id=job_id)
 
+    @server.tool(name="inspect_video")
+    def inspect_video(job_id: str) -> Dict[str, Any]:
+        """Run automated visual QA across all scenes, extracting keyframes and contact sheet."""
+        return tools_instance.inspect_video(job_id=job_id)
+
+    @server.tool(name="inspect_scene")
+    def inspect_scene(job_id: str, scene_id: str) -> Dict[str, Any]:
+        """Inspect an individual scene and extract evidence keyframes and technical metrics."""
+        return tools_instance.inspect_scene(job_id=job_id, scene_id=scene_id)
+
+    @server.tool(name="submit_visual_review")
+    def submit_visual_review(job_id: str, review: Dict[str, Any]) -> Dict[str, Any]:
+        """Submit structured visual findings, defect severities, and repair suggestions."""
+        return tools_instance.submit_visual_review(job_id=job_id, review=review)
+
+    @server.tool(name="get_quality_report")
+    def get_quality_report(job_id: str) -> Dict[str, Any]:
+        """Retrieve latest technical QA metrics, contact sheet path, and agent visual review."""
+        return tools_instance.get_quality_report(job_id=job_id)
+
     return server
 
 

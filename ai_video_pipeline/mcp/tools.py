@@ -13,14 +13,18 @@ from ai_video_pipeline.media.text_splash import TextSplashGenerator
 from ai_video_pipeline.media.tts import TextToSpeechService
 from ai_video_pipeline.parsers.omega import ParserOmega
 from ai_video_pipeline.parsers.theta import ParserTheta
+from ai_video_pipeline.quality.validator import QualityValidator
 from ai_video_pipeline.schemas.job_schemas import (
     AudioPlanModel,
     JobErrorReportModel,
+    JobQAReportModel,
     JobRequestModel,
     JobStatusModel,
     SceneErrorModel,
+    SceneQAMetricsModel,
     StoryboardModel,
     ValidationResultModel,
+    VisualReviewModel,
 )
 from ai_video_pipeline.schemas.models import (
     AnimationEngine,
@@ -43,6 +47,7 @@ class PipelineMCPTools:
         tts_service: Optional[TextToSpeechService] = None,
         text_splash: Optional[TextSplashGenerator] = None,
         compositor: Optional[VideoCompositor] = None,
+        quality_validator: Optional[QualityValidator] = None,
     ) -> None:
         self.workspace_root = workspace_root
         self.job_manager = job_manager or JobManager(workspace_root=self.workspace_root)
@@ -52,6 +57,7 @@ class PipelineMCPTools:
         self.tts_service = tts_service or TextToSpeechService()
         self.text_splash = text_splash or TextSplashGenerator()
         self.compositor = compositor or VideoCompositor()
+        self.quality_validator = quality_validator or QualityValidator(compositor=self.compositor)
 
     def create_job(
         self,
@@ -585,7 +591,7 @@ class PipelineMCPTools:
             return {"error": f"Failed to read errors: {e}"}
 
     def retry_scene(self, job_id: str, scene_id: str) -> Dict[str, Any]:
-        """Re-validate, re-render, and re-composite only a repaired scene."""
+        """Re-validate, re-render, and re-composite only a repaired scene (max 3 iterations)."""
         try:
             job_dir = self.job_manager.get_job_dir(job_id)
             plan = self.director_bridge.load_plan_manifest(job_dir)
@@ -596,10 +602,25 @@ class PipelineMCPTools:
         if not target_scene:
             return {"success": False, "error": f"Scene {scene_id} not found in plan"}
 
+        # Enforce maximum repair iteration limit
+        attempts = self.quality_validator.get_repair_count(job_dir, scene_id)
+        if attempts >= QualityValidator.MAX_REPAIR_ITERATIONS:
+            return {
+                "success": False,
+                "scene_id": scene_id,
+                "error": f"Maximum automatic repair iterations ({QualityValidator.MAX_REPAIR_ITERATIONS}) reached for scene {scene_id}",
+            }
+
+        # Backup current render before attempting replacement
+        self.quality_validator.backup_scene_render(job_dir, scene_id)
+        self.quality_validator.increment_repair_count(job_dir, scene_id)
+
         # Re-render scene
         res = self.parser_omega.execute_scene(job_dir, target_scene)
         if not res.get("success"):
             err_msg = res.get("error", "Unknown error")
+            # Restore previous render backup
+            self.quality_validator.restore_scene_backup(job_dir, scene_id)
             self.job_manager.append_error(
                 job_id,
                 scene_id=scene_id,
@@ -609,6 +630,9 @@ class PipelineMCPTools:
                 log_file=res.get("log_file"),
             )
             return {"success": False, "scene_id": scene_id, "error": err_msg}
+
+        # Run automated visual QA on newly rendered scene
+        qa_metrics = self.quality_validator.inspect_scene(job_dir, target_scene, expected_aspect_ratio=plan.aspect_ratio)
 
         # Check if all scenes now have renders
         renders_dir = job_dir / "renders"
@@ -629,6 +653,7 @@ class PipelineMCPTools:
                     "success": post_res.get("status") == "completed",
                     "scene_id": scene_id,
                     "output_path": post_res.get("output_path"),
+                    "qa_status": qa_metrics.status,
                     "all_scenes_ready": True,
                 }
             else:
@@ -645,6 +670,7 @@ class PipelineMCPTools:
                         "success": True,
                         "scene_id": scene_id,
                         "output_path": str(final_mp4),
+                        "qa_status": qa_metrics.status,
                         "all_scenes_ready": True,
                     }
                 except Exception as e:
@@ -658,5 +684,66 @@ class PipelineMCPTools:
             "success": True,
             "scene_id": scene_id,
             "output_path": res.get("output_path"),
+            "qa_status": qa_metrics.status,
             "all_scenes_ready": False,
         }
+
+    def inspect_video(self, job_id: str) -> Dict[str, Any]:
+        """
+        Run automated visual QA across all scenes, extract frames and contact sheets.
+        """
+        try:
+            job_dir = self.job_manager.get_job_dir(job_id)
+            plan = self.director_bridge.load_plan_manifest(job_dir)
+            report = self.quality_validator.inspect_video(job_dir, plan)
+            return report.model_dump()
+        except Exception as e:
+            return {"error": f"Failed to inspect video: {e}", "job_id": job_id}
+
+    def inspect_scene(self, job_id: str, scene_id: str) -> Dict[str, Any]:
+        """
+        Inspect one scene and return scene-specific metrics and evidence frame paths.
+        """
+        try:
+            job_dir = self.job_manager.get_job_dir(job_id)
+            plan = self.director_bridge.load_plan_manifest(job_dir)
+            target = next((s for s in plan.scenes if s.scene_id == scene_id), None)
+            if not target:
+                return {"error": f"Scene '{scene_id}' not found in plan", "job_id": job_id}
+            metrics = self.quality_validator.inspect_scene(job_dir, target, expected_aspect_ratio=plan.aspect_ratio)
+            return metrics.model_dump()
+        except Exception as e:
+            return {"error": f"Failed to inspect scene: {e}", "job_id": job_id, "scene_id": scene_id}
+
+    def submit_visual_review(self, job_id: str, review: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Accept structured visual review findings from Codex/Antigravity and store in qa/visual_review.json.
+        """
+        try:
+            job_dir = self.job_manager.get_job_dir(job_id)
+            # Ensure job_id in review matches
+            review["job_id"] = job_id
+            validated_review = self.quality_validator.save_visual_review(job_dir, review)
+            return {
+                "success": True,
+                "job_id": job_id,
+                "overall_status": validated_review.overall_status,
+                "scenes_to_repair": validated_review.scenes_to_repair,
+                "issue_count": len(validated_review.issues),
+            }
+        except Exception as e:
+            return {"success": False, "error": f"Invalid visual review submission: {e}"}
+
+    def get_quality_report(self, job_id: str) -> Dict[str, Any]:
+        """
+        Retrieve latest technical QA report and agent review findings from qa/quality_report.json.
+        """
+        try:
+            job_dir = self.job_manager.get_job_dir(job_id)
+            report_file = job_dir / "qa" / "quality_report.json"
+            if report_file.exists():
+                return json.loads(report_file.read_text(encoding="utf-8"))
+            # If not yet generated, run visual QA now
+            return self.inspect_video(job_id)
+        except Exception as e:
+            return {"error": f"Failed to retrieve quality report: {e}", "job_id": job_id}

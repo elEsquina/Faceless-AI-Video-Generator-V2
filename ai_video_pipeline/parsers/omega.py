@@ -303,8 +303,10 @@ class ParserOmega:
                     "log_file": str(log_path),
                 }
 
-            # Copy to target final scene output
-            shutil.copy2(real_mp4s[0], final_scene_output)
+            # Copy to target final scene output: prefer exact filename match
+            matching_mp4s = [p for p in real_mp4s if p.name == output_filename]
+            target_mp4 = matching_mp4s[0] if matching_mp4s else max(real_mp4s, key=lambda p: p.stat().st_mtime)
+            shutil.copy2(target_mp4, final_scene_output)
             return {
                 "scene_id": scene.scene_id,
                 "success": True,

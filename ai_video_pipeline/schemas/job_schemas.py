@@ -268,6 +268,62 @@ class ValidationResultModel(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# 9. Visual QA & Agent Review Models (Milestone 3)
+# ---------------------------------------------------------------------------
+
+class VisualIssueModel(BaseModel):
+    """Visual defect identified either by automated QA or the external AI Director."""
+
+    scene_id: str
+    severity: Literal["low", "medium", "high", "critical"] = "medium"
+    issue_type: str  # e.g., "blank_frame", "frozen_scene", "aspect_mismatch", "equation_overlap"
+    description: str
+    suggested_fix: Optional[str] = None
+
+
+class VisualReviewModel(BaseModel):
+    """Structured visual review findings submitted by Codex / Antigravity."""
+
+    job_id: str
+    reviewer: str = "codex_antigravity"
+    overall_status: Literal["approved", "needs_repair", "rejected"]
+    issues: List[VisualIssueModel] = Field(default_factory=list)
+    scenes_to_repair: List[str] = Field(default_factory=list)
+    notes: Optional[str] = None
+
+
+class SceneQAMetricsModel(BaseModel):
+    """Technical quality metrics and frame evidence for a single scene."""
+
+    scene_id: str
+    duration: float = 0.0
+    width: int = 0
+    height: int = 0
+    is_blank: bool = False
+    is_frozen: bool = False
+    mean_luminance: float = 0.0
+    contrast_std: float = 0.0
+    aspect_ratio_ok: bool = True
+    status: Literal["passed", "warning", "failed"] = "passed"
+    issues: List[str] = Field(default_factory=list)
+    evidence_frames: Dict[str, str] = Field(default_factory=dict)  # {"start": path, "middle": path, "end": path}
+
+
+class JobQAReportModel(BaseModel):
+    """Complete technical QA report and agent review findings for a video job."""
+
+    job_id: str
+    overall_status: Literal["passed", "warning", "failed"]
+    total_scenes: int = 0
+    scenes_passed: int = 0
+    scenes_failed: int = 0
+    contact_sheet_path: Optional[str] = None
+    scene_reports: Dict[str, SceneQAMetricsModel] = Field(default_factory=dict)
+    detected_anomalies: List[str] = Field(default_factory=list)
+    ai_review: Optional[VisualReviewModel] = None
+
+
+# ---------------------------------------------------------------------------
 # Module-level helpers
 # ---------------------------------------------------------------------------
 
