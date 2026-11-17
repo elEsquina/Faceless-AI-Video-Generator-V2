@@ -151,9 +151,19 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
 
         events = []
-        # Group word timestamps into phrases of words_per_phrase
-        for i in range(0, len(word_timestamps), words_per_phrase):
-            phrase_words = word_timestamps[i : i + words_per_phrase]
+        # Keep phrases within sentences and speech intervals, including scene cuts.
+        phrases = []
+        phrase = []
+        for word in word_timestamps:
+            if phrase and (len(phrase) >= words_per_phrase
+                    or phrase[-1].word.endswith((".", "?", "!", ":"))
+                    or word.start_time - phrase[-1].end_time > 0.4):
+                phrases.append(phrase)
+                phrase = []
+            phrase.append(word)
+        if phrase:
+            phrases.append(phrase)
+        for phrase_words in phrases:
             # For each word in the phrase, create a dialog line where that word is highlighted
             for active_idx, target_word in enumerate(phrase_words):
                 w_start = _format_ass_time(target_word.start_time)

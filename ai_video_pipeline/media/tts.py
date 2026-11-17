@@ -64,6 +64,8 @@ class TextToSpeechService:
 
     def _get_cache_key(self, text: str, voice_id: str, language: str) -> str:
         h = hashlib.sha256()
+        # Invalidate legacy caches containing character-weighted estimates.
+        h.update(b"kokoro-token-timestamps-v2")
         h.update(text.strip().encode("utf-8"))
         h.update(voice_id.encode("utf-8"))
         h.update(language.encode("utf-8"))
@@ -169,6 +171,7 @@ class TextToSpeechService:
         # Python script executed inside Kokoro Docker container
         py_script = f"""
 import sys
+import json
 from kokoro import KPipeline
 import soundfile as sf
 import numpy as np
@@ -178,18 +181,35 @@ voice = {json.dumps(voice_id)}
 pipeline = KPipeline(lang_code='a')
 generator = pipeline(text, voice=voice, speed=1.0)
 chunks = []
-for gs, ps, audio in generator:
+word_timings = []
+offset = 0.0
+for result in generator:
+    audio = result.audio
     if audio is not None and len(audio) > 0:
+        for token in result.tokens or []:
+            start = getattr(token, 'start_ts', None)
+            end = getattr(token, 'end_ts', None)
+            if word_timings and token.text.strip() and not any(c.isalnum() for c in token.text):
+                word_timings[-1]['word'] += token.text
+                if end is not None:
+                    word_timings[-1]['end_time'] = round(offset + end, 3)
+                continue
+            if start is not None and end is not None and end > start:
+                word_timings.append(dict(word=token.text, start_time=round(offset + start, 3), end_time=round(offset + end, 3)))
         chunks.append(audio)
+        offset += len(audio) / 24000
 
 if not chunks:
     sys.exit(1)
 
 full = np.concatenate(chunks)
 sf.write({json.dumps(container_out)}, full, 24000)
+with open({json.dumps(container_out + '.timings.json')}, 'w') as f:
+    json.dump(word_timings, f)
 import os
 try:
     os.chmod({json.dumps(container_out)}, 0o666)
+    os.chmod({json.dumps(container_out + '.timings.json')}, 0o666)
 except Exception:
     pass
 print('OK')
@@ -225,7 +245,15 @@ print('OK')
         shutil.copy2(output_file, cached_wav)
 
         actual_duration = self.measure_wav_duration(output_file)
-        timestamps = self.estimate_word_timestamps(script_text, actual_duration)
+        timing_path = self.workspace_dir / (container_out.removeprefix("/workspace/") + ".timings.json")
+        timing_data = json.loads(timing_path.read_text(encoding="utf-8"))
+        if not timing_data:
+            raise RuntimeError("Kokoro returned no token timestamps; synchronized captions cannot be generated")
+        timestamps = [WordTimestamp(
+            word=w["word"],
+            start_time=max(0.0, min(w["start_time"], actual_duration)),
+            end_time=min(w["end_time"], actual_duration),
+        ) for w in timing_data]
 
         meta = {
             "text": script_text,
@@ -233,6 +261,7 @@ print('OK')
             "language": language,
             "duration": actual_duration,
             "sample_rate": 24000,
+            "timestamp_source": "kokoro_tokens",
             "word_timestamps": [
                 {"word": t.word, "start_time": t.start_time, "end_time": t.end_time}
                 for t in timestamps
