@@ -1,3 +1,0 @@
-file '/workspace/jobs/bdb6d226/audio/padded_scene_000.wav'
-file '/workspace/jobs/bdb6d226/audio/padded_scene_001.wav'
-file '/workspace/jobs/bdb6d226/audio/padded_scene_002.wav'

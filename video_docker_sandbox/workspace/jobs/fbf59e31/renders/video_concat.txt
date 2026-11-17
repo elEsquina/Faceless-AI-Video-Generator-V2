@@ -1,3 +1,0 @@
-file '/workspace/jobs/fbf59e31/renders/scene_001.mp4'
-file '/workspace/jobs/fbf59e31/renders/scene_002.mp4'
-file '/workspace/jobs/fbf59e31/renders/scene_003.mp4'
