@@ -1,0 +1,39 @@
+{
+  "job_id": "4cea6062",
+  "title": "Gradient Descent Optimization Algorithm",
+  "category": "cs_math_educational",
+  "aspect_ratio": "16:9",
+  "target_duration_seconds": 30.0,
+  "scenes": [
+    {
+      "scene_id": "scene_001",
+      "index": 0,
+      "engine": "manim",
+      "start_time": 0.0,
+      "end_time": 10.0,
+      "narration_text": "Gradient descent is a first-order optimization algorithm used to find local minima of a loss function.",
+      "visual_description": "Loss function curve and initial parameter display",
+      "code_file": "scene_001.py"
+    },
+    {
+      "scene_id": "scene_002",
+      "index": 1,
+      "engine": "manim",
+      "start_time": 10.0,
+      "end_time": 20.0,
+      "narration_text": "At each step, parameters are updated in the opposite direction of the gradient to descend the loss curve.",
+      "visual_description": "Point moving down the parabola curve towards the minimum",
+      "code_file": "scene_002.py"
+    },
+    {
+      "scene_id": "scene_003",
+      "index": 2,
+      "engine": "manim",
+      "start_time": 20.0,
+      "end_time": 30.0,
+      "narration_text": "When the gradient approaches zero, the step sizes shrink and the algorithm converges to the optimal parameter.",
+      "visual_description": "Point stabilizes at the global minimum with confirmation box",
+      "code_file": "scene_003.py"
+    }
+  ]
+}

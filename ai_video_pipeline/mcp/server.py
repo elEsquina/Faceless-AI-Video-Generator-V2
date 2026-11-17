@@ -57,6 +57,11 @@ def create_pipeline_mcp_server(tools: Optional[PipelineMCPTools] = None) -> Fast
         """Re-validate, re-render, and re-composite only a repaired scene."""
         return tools_instance.retry_scene(job_id=job_id, scene_id=scene_id)
 
+    @server.tool(name="retry_postproduction")
+    def retry_postproduction(job_id: str) -> Dict[str, Any]:
+        """Re-execute audio, captions, and mixing postproduction without re-rendering scenes."""
+        return tools_instance.retry_postproduction(job_id=job_id)
+
     return server
 
 

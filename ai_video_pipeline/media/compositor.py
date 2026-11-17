@@ -72,6 +72,11 @@ class VideoCompositor:
     ) -> Path:
         """Concatenate rendered video scene segments into a single continuous video stream."""
         output_file.parent.mkdir(parents=True, exist_ok=True)
+        if output_file.exists():
+            try:
+                output_file.unlink()
+            except OSError:
+                pass
         try:
             os.chmod(output_file.parent, 0o777)
         except OSError:
@@ -129,6 +134,11 @@ class VideoCompositor:
         Pad and concatenate per-scene narration WAVs so each narration aligns with its scene start time.
         """
         output_file.parent.mkdir(parents=True, exist_ok=True)
+        if output_file.exists():
+            try:
+                output_file.unlink()
+            except OSError:
+                pass
         try:
             os.chmod(output_file.parent, 0o777)
         except OSError:
@@ -196,6 +206,11 @@ class VideoCompositor:
         Mix and normalize voiceover, background music with fades, and sound effects.
         """
         output_file.parent.mkdir(parents=True, exist_ok=True)
+        if output_file.exists():
+            try:
+                output_file.unlink()
+            except OSError:
+                pass
         try:
             os.chmod(output_file.parent, 0o777)
         except OSError:
@@ -280,6 +295,11 @@ class VideoCompositor:
     ) -> Path:
         """Overlay animated subtitle text splash track onto video stream using libass."""
         output_file.parent.mkdir(parents=True, exist_ok=True)
+        if output_file.exists():
+            try:
+                output_file.unlink()
+            except OSError:
+                pass
         try:
             os.chmod(output_file.parent, 0o777)
         except OSError:
@@ -316,6 +336,11 @@ class VideoCompositor:
         Compose final H.264 MP4 with AAC audio stream and optional burned subtitles.
         """
         output_file.parent.mkdir(parents=True, exist_ok=True)
+        if output_file.exists():
+            try:
+                output_file.unlink()
+            except OSError:
+                pass
         try:
             os.chmod(output_file.parent, 0o777)
         except OSError:

@@ -1,0 +1,89 @@
+{
+  "text": "Gradient descent is a first-order optimization algorithm used to find local minima of a loss function.",
+  "voice_id": "af_heart",
+  "language": "en",
+  "duration": 7.25,
+  "sample_rate": 24000,
+  "word_timestamps": [
+    {
+      "word": "Gradient",
+      "start_time": 0.0,
+      "end_time": 0.682
+    },
+    {
+      "word": "descent",
+      "start_time": 0.682,
+      "end_time": 1.279
+    },
+    {
+      "word": "is",
+      "start_time": 1.279,
+      "end_time": 1.45
+    },
+    {
+      "word": "a",
+      "start_time": 1.45,
+      "end_time": 1.535
+    },
+    {
+      "word": "first-order",
+      "start_time": 1.535,
+      "end_time": 2.388
+    },
+    {
+      "word": "optimization",
+      "start_time": 2.388,
+      "end_time": 3.412
+    },
+    {
+      "word": "algorithm",
+      "start_time": 3.412,
+      "end_time": 4.179
+    },
+    {
+      "word": "used",
+      "start_time": 4.179,
+      "end_time": 4.521
+    },
+    {
+      "word": "to",
+      "start_time": 4.521,
+      "end_time": 4.691
+    },
+    {
+      "word": "find",
+      "start_time": 4.691,
+      "end_time": 5.032
+    },
+    {
+      "word": "local",
+      "start_time": 5.032,
+      "end_time": 5.459
+    },
+    {
+      "word": "minima",
+      "start_time": 5.459,
+      "end_time": 5.971
+    },
+    {
+      "word": "of",
+      "start_time": 5.971,
+      "end_time": 6.141
+    },
+    {
+      "word": "a",
+      "start_time": 6.141,
+      "end_time": 6.226
+    },
+    {
+      "word": "loss",
+      "start_time": 6.226,
+      "end_time": 6.568
+    },
+    {
+      "word": "function.",
+      "start_time": 6.568,
+      "end_time": 7.25
+    }
+  ]
+}

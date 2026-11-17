@@ -1,0 +1,3 @@
+file '/workspace/jobs/4cea6062/audio/padded_scene_000.wav'
+file '/workspace/jobs/4cea6062/audio/padded_scene_001.wav'
+file '/workspace/jobs/4cea6062/audio/padded_scene_002.wav'

@@ -1,0 +1,13 @@
+{
+  "job_id": "4cea6062",
+  "scene_errors": [
+    {
+      "scene_id": "scene_001",
+      "engine": "kokoro_tts",
+      "stage": "narration_generation",
+      "message": "Narration generation failed for scene scene_001: [Errno 13] Permission denied: '/home/othmane/Faceless_V2/video_docker_sandbox/workspace/jobs/4cea6062/audio/scene_001_narration.wav'",
+      "log_file": null
+    }
+  ],
+  "global_errors": []
+}

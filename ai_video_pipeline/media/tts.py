@@ -132,7 +132,16 @@ class TextToSpeechService:
         cached_meta = self.cache_dir / f"{cache_key}.json"
 
         if cached_wav.exists() and cached_meta.exists():
+            if output_file.exists():
+                try:
+                    output_file.unlink()
+                except OSError:
+                    pass
             shutil.copy2(cached_wav, output_file)
+            try:
+                os.chmod(output_file, 0o666)
+            except OSError:
+                pass
             meta = json.loads(cached_meta.read_text(encoding="utf-8"))
             timestamps = [
                 WordTimestamp(
@@ -178,6 +187,11 @@ if not chunks:
 
 full = np.concatenate(chunks)
 sf.write({json.dumps(container_out)}, full, 24000)
+import os
+try:
+    os.chmod({json.dumps(container_out)}, 0o666)
+except Exception:
+    pass
 print('OK')
 """
 
