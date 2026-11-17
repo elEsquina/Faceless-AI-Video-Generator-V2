@@ -175,6 +175,12 @@ class NarrationSegmentModel(BaseModel):
     start_time: float = Field(ge=0.0)
     end_time: float = Field(gt=0.0)
 
+    @model_validator(mode="after")
+    def _positive_interval(self):
+        if self.end_time <= self.start_time:
+            raise ValueError("Narration end_time must follow start_time")
+        return self
+
 
 class CaptionStyleModel(BaseModel):
     """Configuration for animated captions."""
@@ -286,6 +292,8 @@ class VisualReviewModel(BaseModel):
 
     job_id: str
     reviewer: str = "codex_antigravity"
+    artifact_fingerprint: Optional[str] = None
+    inspected_frames: List[str] = Field(default_factory=list)
     overall_status: Literal["approved", "needs_repair", "rejected"]
     issues: List[VisualIssueModel] = Field(default_factory=list)
     scenes_to_repair: List[str] = Field(default_factory=list)
@@ -299,6 +307,8 @@ class SceneQAMetricsModel(BaseModel):
     duration: float = 0.0
     width: int = 0
     height: int = 0
+    advisories: List[str] = Field(default_factory=list)
+    geometry_status: Literal["unavailable", "passed", "failed"] = "unavailable"
     is_blank: bool = False
     is_frozen: bool = False
     mean_luminance: float = 0.0
@@ -314,6 +324,9 @@ class JobQAReportModel(BaseModel):
 
     job_id: str
     overall_status: Literal["passed", "warning", "failed"]
+    visual_acceptance: str = "pending_visual_review"
+    artifact_fingerprint: Optional[str] = None
+    final_evidence_frames: Dict[str, str] = Field(default_factory=dict)
     total_scenes: int = 0
     scenes_passed: int = 0
     scenes_failed: int = 0

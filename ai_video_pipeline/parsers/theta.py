@@ -125,6 +125,11 @@ class ParserTheta:
                         f"exceeds scene duration ({scene_dur:.2f}s)"
                     )
 
+        from ai_video_pipeline.core.timeline import narration_windows
+        try:
+            narration_windows(plan, audio_plan)
+        except ValueError as e:
+            issues.append(str(e))
         return len(issues) == 0, issues
 
     def ingest_audio_instructions(self, plan: PlanManifest) -> List[AudioCue]:

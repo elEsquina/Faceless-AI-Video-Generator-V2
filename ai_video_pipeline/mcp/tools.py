@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from ai_video_pipeline.core.director import ExternalDirectorBridge
+from ai_video_pipeline.core.production import stage_production, scene_signature
+from ai_video_pipeline.core.timeline import narration_windows, silence
 from ai_video_pipeline.jobs.manager import JobManager
 from ai_video_pipeline.media.compositor import VideoCompositor
 from ai_video_pipeline.media.text_splash import TextSplashGenerator
@@ -90,6 +92,7 @@ class PipelineMCPTools:
         try:
             job_id = self.job_manager.create_job(req_dict)
             job_dir = self.job_manager.get_job_dir(job_id)
+            production = stage_production(job_dir, req_model.video_type.value)
             # Create Milestone 2 subdirectories
             for sub in ("audio", "captions"):
                 (job_dir / sub).mkdir(parents=True, exist_ok=True)
@@ -98,6 +101,7 @@ class PipelineMCPTools:
                 "job_id": job_id,
                 "job_dir": str(job_dir),
                 "status": "created",
+                "production": production,
                 "message": f"Job {job_id} created successfully",
             }
         except Exception as e:
@@ -212,69 +216,47 @@ class PipelineMCPTools:
             "narration_generation",
             progress_pct=50,
             current_stage="synthesizing_narration",
+            errors=[],
         )
 
-        # Match narration segments by scene
-        narr_by_scene = {n.scene_id: n for n in audio_plan.narration_segments}
         scene_narrations: List[Tuple[Path, float]] = []
         all_word_timestamps: List[WordTimestamp] = []
-
         voice_id = audio_plan.voice_id or self.tts_service.select_voice_profile(plan.category)
         language = audio_plan.language or "en"
-
-        for scene in plan.scenes:
-            scene_dur = scene.end_time - scene.start_time
-            # Determine script text
-            if scene.scene_id in narr_by_scene:
-                script_text = narr_by_scene[scene.scene_id].text
-                scene_voice = narr_by_scene[scene.scene_id].voice_id or voice_id
-            else:
-                script_text = scene.narration_text or ""
-                scene_voice = voice_id
-
-            if not script_text.strip():
-                # Generate a short silent padding wav if no narration
-                silent_wav = audio_dir / f"{scene.scene_id}_silent.wav"
-                cmd = [
-                    "docker", "compose", "-f", str(self.compositor.compose_file),
-                    "run", "--rm", "ffmpeg", "-y",
-                    "-f", "lavfi", "-i", "anullsrc=r=24000:cl=mono",
-                    "-t", f"{scene_dur:.4f}",
-                    f"/workspace/{silent_wav.resolve().relative_to(self.compositor.workspace_dir.resolve())}",
-                ]
-                subprocess.run(cmd, cwd=str(self.compositor.sandbox_dir), capture_output=True)
-                scene_narrations.append((silent_wav, scene_dur))
-                continue
-
-            scene_wav = audio_dir / f"{scene.scene_id}_narration.wav"
-            try:
+        try:
+            windows = narration_windows(plan, audio_plan)
+            for index, window in enumerate(windows):
+                duration = window["end"] - window["start"]
+                scene_id = window["scene_id"]
+                text = window["text"] or ""
+                if not text.strip():
+                    wav = silence(audio_dir / f"{scene_id}_silent_{index:03d}.wav", duration)
+                    scene_narrations.append((wav, duration))
+                    continue
+                # Preserve legacy names when a scene has just one narration window.
+                count = sum(w["scene_id"] == scene_id for w in windows)
+                suffix = "" if count == 1 else f"_{index:03d}"
+                wav = audio_dir / f"{scene_id}_narration{suffix}.wav"
                 _, timestamps, meta = self.tts_service.generate_narration(
-                    script_text=script_text,
-                    voice_id=scene_voice,
+                    script_text=text,
+                    voice_id=window["voice_id"] or voice_id,
                     language=language,
-                    output_file=scene_wav,
-                    scene_duration_limit=scene_dur + 0.1,  # allow slight epsilon
+                    output_file=wav,
+                    scene_duration_limit=duration,
                 )
-            except Exception as e:
-                err_msg = f"Narration generation failed for scene {scene.scene_id}: {e}"
-                self.job_manager.append_error(
-                    job_id, scene.scene_id, "kokoro_tts", "narration_generation", err_msg
-                )
-                self.job_manager.transition_state(job_id, "failed", errors=[err_msg])
-                self.job_manager.release_lock(job_id)
-                return {"status": "failed", "job_id": job_id, "error": err_msg}
-
-            scene_narrations.append((scene_wav, scene_dur))
-
-            # Shift word timestamps by scene start_time on global timeline
-            for wt in timestamps:
-                all_word_timestamps.append(
-                    WordTimestamp(
+                scene_narrations.append((wav, duration))
+                for wt in timestamps:
+                    all_word_timestamps.append(WordTimestamp(
                         word=wt.word,
-                        start_time=round(wt.start_time + scene.start_time, 3),
-                        end_time=round(wt.end_time + scene.start_time, 3),
-                    )
-                )
+                        start_time=round(wt.start_time + window["start"], 3),
+                        end_time=round(wt.end_time + window["start"], 3),
+                    ))
+        except Exception as e:
+            err_msg = f"Narration generation failed: {e}"
+            self.job_manager.append_error(job_id, None, "kokoro_tts", "narration_generation", err_msg)
+            self.job_manager.transition_state(job_id, "failed", errors=[err_msg])
+            self.job_manager.release_lock(job_id)
+            return {"status": "failed", "job_id": job_id, "error": err_msg}
 
         # Assemble full continuous narration track
         narration_full = audio_dir / "narration_full.wav"
@@ -453,6 +435,10 @@ class PipelineMCPTools:
             return {"status": "failed", "error": str(e)}
 
         status = self.job_manager.read_status(job_id)
+        active = self.job_manager.get_active_job()
+        if active and active != job_id:
+            return {"status": "failed", "error": f"Active job {active} holds the single-video lock"}
+        self.job_manager.LOCK_FILE.write_text(job_id, encoding="utf-8")
         if status.get("state") not in ("validated", "created"):
             val = self.validate_plan(job_id)
             if not val.get("is_valid"):
@@ -473,13 +459,22 @@ class PipelineMCPTools:
             self.job_manager.release_lock(job_id)
             return {"status": "failed", "error": f"Could not load plan manifest: {e}"}
 
+        self.job_manager.transition_state(job_id, "rendering", errors=[])
         scene_outputs: List[Path] = []
         total_scenes = len(plan.scenes)
         renders_dir = job_dir / "renders"
 
         for idx, scene in enumerate(plan.scenes):
             scene_out = renders_dir / f"{scene.scene_id}.mp4"
-            if scene_out.exists() and scene_out.stat().st_size > 0:
+            cache_file = renders_dir / f"{scene.scene_id}.source.json"
+            signature = scene_signature(job_dir, scene)
+            cache_matches = not (job_dir / "production_manifest.json").exists()
+            if cache_file.exists():
+                try:
+                    cache_matches = json.loads(cache_file.read_text()).get("signature") == signature
+                except (ValueError, OSError):
+                    cache_matches = False
+            if cache_matches and scene_out.exists() and scene_out.stat().st_size > 0:
                 # Reuse existing valid scene render
                 scene_outputs.append(scene_out)
                 continue
@@ -517,6 +512,7 @@ class PipelineMCPTools:
                     "log_file": res.get("log_file"),
                 }
 
+            cache_file.write_text(json.dumps({"signature": signature}), encoding="utf-8")
             scene_outputs.append(Path(res["output_path"]))
 
         # If audio_plan.json exists, execute full Milestone 2 postproduction
@@ -611,6 +607,8 @@ class PipelineMCPTools:
                 "error": f"Maximum automatic repair iterations ({QualityValidator.MAX_REPAIR_ITERATIONS}) reached for scene {scene_id}",
             }
 
+        self.job_manager.transition_state(job_id, "rendering", progress_pct=10,
+                                          current_stage=f"repairing_{scene_id}", errors=[])
         # Backup current render before attempting replacement
         self.quality_validator.backup_scene_render(job_dir, scene_id)
         self.quality_validator.increment_repair_count(job_dir, scene_id)
@@ -621,6 +619,7 @@ class PipelineMCPTools:
             err_msg = res.get("error", "Unknown error")
             # Restore previous render backup
             self.quality_validator.restore_scene_backup(job_dir, scene_id)
+            self.job_manager.transition_state(job_id, "failed", errors=[err_msg])
             self.job_manager.append_error(
                 job_id,
                 scene_id=scene_id,
@@ -631,6 +630,8 @@ class PipelineMCPTools:
             )
             return {"success": False, "scene_id": scene_id, "error": err_msg}
 
+        (job_dir / "renders" / f"{scene_id}.source.json").write_text(
+            json.dumps({"signature": scene_signature(job_dir, target_scene)}), encoding="utf-8")
         # Run automated visual QA on newly rendered scene
         qa_metrics = self.quality_validator.inspect_scene(job_dir, target_scene, expected_aspect_ratio=plan.aspect_ratio)
 
@@ -742,7 +743,10 @@ class PipelineMCPTools:
             job_dir = self.job_manager.get_job_dir(job_id)
             report_file = job_dir / "qa" / "quality_report.json"
             if report_file.exists():
-                return json.loads(report_file.read_text(encoding="utf-8"))
+                from ai_video_pipeline.quality.evidence import acceptance
+                report = JobQAReportModel.model_validate_json(report_file.read_text(encoding="utf-8"))
+                report.visual_acceptance = acceptance(job_dir, report)
+                return report.model_dump(mode="json")
 
             review_file = job_dir / "qa" / "visual_review.json"
             ai_rev = json.loads(review_file.read_text(encoding="utf-8")) if review_file.exists() else None

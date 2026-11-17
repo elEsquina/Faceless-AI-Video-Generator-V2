@@ -51,30 +51,16 @@ scene.render.ffmpeg.constant_rate_factor = 'HIGH'
 scene.render.ffmpeg.ffmpeg_preset = 'REALTIME'
 ```
 
-### B. Procedural Stylized Character Creation
-When external rigs are not bundled, generate charming procedural geometric characters:
-- **Rabbit Archetype**: Rounded body sphere, head sphere, long ears with forward tilt, pink nose, hopping translation with vertical sine-bounce and ear flop rotations.
-- **Turtle Archetype**: Flattened olive-green shell hemisphere, round head with gentle bobbing, 4 stubby flippers/legs moving alternately.
+### B. Executable Character Foundation
 
-```python
-def create_rabbit(name="Rabbit", location=(0, 0, 0)):
-    # Body
-    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.7, location=(location[0], location[1], location[2] + 0.7))
-    body = bpy.context.active_object
-    body.name = f"{name}_Body"
-    
-    # Head
-    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.45, location=(location[0], location[1] + 0.3, location[2] + 1.5))
-    head = bpy.context.active_object
-    head.name = f"{name}_Head"
-    
-    # Ears
-    for side in (-0.2, 0.2):
-        bpy.ops.mesh.primitive_cylinder_add(radius=0.09, depth=0.7, location=(location[0] + side, location[1] + 0.3, location[2] + 2.0))
-        ear = bpy.context.active_object
-        ear.rotation_euler = (0.2, side * 0.4, 0)
-        ear.name = f"{name}_Ear_{'L' if side < 0 else 'R'}"
-```
+Read `.agents/skills/video-kids/SKILL.md`. New MCP jobs contain
+`scenes/_production/kids_stage.py` and `motion.py`: original profiled meshes,
+actual armature binding, named action channels, facial controls and scale-aware
+camera shots. Inspect `production_manifest.json`, then customize those utilities.
+Do not substitute UV spheres or cubes for final characters. The procedural cast
+is a stylized rigid rig; document any remaining gait, articulation or asset-quality
+limitations rather than declaring studio readiness. Use the same identity across
+shots, pair facial changes with body reactions, and inspect actual frames.
 
 ### C. Environment Generation
 Build vibrant storybook environments:

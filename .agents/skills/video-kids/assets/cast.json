@@ -1,0 +1,11 @@
+{
+  "rig": "profile-armature-v1",
+  "species": [
+    "rabbit",
+    "turtle"
+  ],
+  "forward": "-Y",
+  "up": "Z",
+  "scale_units": "metres",
+  "provenance": "Original procedural meshes; no imported upstream assets."
+}

@@ -134,3 +134,22 @@ jobs/<job_id>/
     ├── audio/            # Narration and mixed audio stems
     └── final_video.mp4   # Final compiled video
 ```
+
+## Executable production foundation (required for new jobs)
+
+Before storyboarding, open the selected `.agents/skills/video-*/SKILL.md` and inspect
+`production_manifest.json`. `create_job` stages that channel's executable scripts
+under `scenes/_production/`; import and customize those utilities in original scenes.
+The external director chooses style and engine. Utilities are a foundation, not a
+fixed storyboard. Never fall back silently to placeholder geometry.
+
+Design cast identity, shot compositions, actions, annotation positions and caption
+clearance on the shared timeline before coding. Preview at low resolution, inspect
+actual rendered images, record specific defects and repair only affected scenes.
+Then render final resolution, run existing narration/caption/mix tools and inspect
+both scene frames and the final composed frames. `completed` means media execution
+completed; delivery approval additionally requires `visual_acceptance=approved`.
+Use `inspect_video` then `submit_visual_review` with the report's current
+`artifact_fingerprint` and the paths of all `inspected_frames`. Artistic assessment,
+character continuity, expression, educational truth and interactions require actual
+external director judgment; pixel statistics cannot establish these qualities.

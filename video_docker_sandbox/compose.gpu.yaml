@@ -1,7 +1,12 @@
 # Use with: docker compose -f compose.yaml -f compose.gpu.yaml ...
 services:
   blender:
+    image: ai-video-sandbox-blender-gpu:4.5.16
+    build:
+      context: .
+      dockerfile: docker/blender-gpu.Dockerfile
     environment:
+      FACELESS_BLENDER_BACKEND: CUDA
       NVIDIA_VISIBLE_DEVICES: all
       NVIDIA_DRIVER_CAPABILITIES: compute,utility,graphics,display
     deploy:
@@ -9,7 +14,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              count: 1
+              count: all
               capabilities: [gpu]
 
   gpu-check:
@@ -23,7 +28,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              count: 1
+              count: all
               capabilities: [gpu]
 
   tts:
@@ -35,5 +40,5 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              count: 1
+              count: all
               capabilities: [gpu]

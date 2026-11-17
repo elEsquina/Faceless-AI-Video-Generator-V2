@@ -95,3 +95,13 @@ class GradientDescentScene(ThreeDScene):
 2. Verify coordinate axes align with visual labels.
 3. Check intermediate frames at 25%, 50%, and 75% for text collisions.
 4. Verify scene output duration matches target duration within 0.05 seconds.
+
+## Executable layout and lifecycle foundation
+
+Read `.agents/skills/video-cs-math/SKILL.md` and staged `_production/math_stage.py`.
+Use `replace_text` (disjoint text fades), `replace_object` (ReplacementTransform for shapes), or `replace_equation`
+(TransformMatchingTex) and keep the returned identity. Related objects belong
+in VGroups and `clear_group` handles FadeOut/removal. The library also provides
+arrays, explicit-position graphs/trees, neural networks, fit/layout and camera-aware
+projected bounds. Verify equations and numeric trajectories independently from
+visual review; render and inspect transition midpoints, not just title cards.

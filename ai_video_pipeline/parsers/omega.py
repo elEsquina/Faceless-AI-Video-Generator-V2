@@ -10,6 +10,8 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from ai_video_pipeline.core.devices import blender_gpu_profile
+
 from ai_video_pipeline.schemas.models import (
     AnimationEngine,
     PlanManifest,
@@ -127,11 +129,19 @@ class DockerEngineRunner:
         args: List[str],
         log_file: Optional[Path] = None,
         timeout: int = 300,
+        gpu_profile: Optional[Dict[str, Any]] = None,
     ) -> subprocess.CompletedProcess:
         """
         Execute a docker compose command safely via argument lists (no shell=True).
         """
         base_cmd = ["docker", "compose", "-f", str(self.compose_file)]
+        if gpu_profile is not None:
+            if "blender" not in args or not args or args[0] != "run":
+                raise ValueError("GPU profile is supported for Blender run commands only")
+            base_cmd += ["-f", str(self.sandbox_dir / "compose.gpu.yaml")]
+            args = list(args)
+            service_index = args.index("blender")
+            args[service_index:service_index] = ["--env", f"FACELESS_BLENDER_BACKEND={gpu_profile['backend']}", "--env", f"FACELESS_GPU_REQUIRED={int(gpu_profile.get('required', False))}"]
         full_cmd = base_cmd + args
 
         res = subprocess.run(
@@ -221,6 +231,22 @@ class ParserOmega:
             })
         return manifest
 
+    def stage_remotion_scene(self, job_dir: Path, code_path: Path) -> None:
+        """Use the same scene/helper staging for draft stills and final renders."""
+        # Stage code to remotion src/active_scene.tsx
+        remotion_src = self.runner.sandbox_dir / "remotion" / "src"
+        remotion_src.mkdir(parents=True, exist_ok=True)
+        active_scene_file = remotion_src / "active_scene.tsx"
+        shutil.copy2(code_path, active_scene_file)
+        # Helpers are staged per job, avoiding unresolved imports after scene copying.
+        helper_source = job_dir / "scenes" / "_production"
+        helper_target = remotion_src / "_production"
+        if helper_target.exists():
+            shutil.rmtree(helper_target)
+        if helper_source.exists():
+            shutil.copytree(helper_source, helper_target)
+
+
     def execute_scene(self, job_dir: Path, scene: SceneSpec) -> Dict[str, Any]:
         """
         Execute an animation scene in its dedicated Docker engine container.
@@ -254,10 +280,22 @@ class ParserOmega:
             target_scenes.mkdir(parents=True, exist_ok=True)
             target_code = target_scenes / code_path.name
             shutil.copy2(code_path, target_code)
+            helpers = job_dir / "scenes" / "_production"
+            if helpers.exists():
+                shutil.copytree(helpers, target_scenes / "_production", dirs_exist_ok=True)
             rel_code = target_code.relative_to(workspace_dir)
             target_renders = target_job_dir / "renders"
             target_renders.mkdir(parents=True, exist_ok=True)
             rel_renders = target_renders.relative_to(workspace_dir)
+
+        settings_file = job_dir / "render_settings.json"
+        settings = {}
+        if settings_file.exists():
+            import json
+            settings = json.loads(settings_file.read_text())
+        quality = settings.get("manim_quality", "m" if (job_dir / "production_manifest.json").exists() else "l")
+        if quality not in ("l", "m", "h"):
+            return {"scene_id": scene.scene_id, "success": False, "error": "Invalid manim_quality", "log_file": str(log_path)}
 
         if scene.engine == AnimationEngine.MANIM:
             scene_class = self.manim_handler.find_scene_class(code_path)
@@ -268,7 +306,7 @@ class ParserOmega:
                 "run",
                 "--rm",
                 "manim",
-                "-ql",
+                f"-q{quality}",
                 "--disable_caching",
                 "-o",
                 output_filename,
@@ -334,7 +372,13 @@ class ParserOmega:
                 f"--frames={total_frames}",
                 "--fps=30",
             ]
-            proc = self.runner.run_docker(args, log_file=log_path)
+            try:
+                profile = blender_gpu_profile(self.runner.workspace_dir, settings.get("blender_device", "cpu"))
+            except (ValueError, RuntimeError) as error:
+                return {"scene_id": scene.scene_id, "success": False, "output_path": None,
+                        "error": str(error), "log_file": str(log_path)}
+            options = {"gpu_profile": profile} if profile is not None else {}
+            proc = self.runner.run_docker(args, log_file=log_path, timeout=3600, **options)
             if proc.returncode != 0:
                 return {
                     "scene_id": scene.scene_id,
@@ -377,11 +421,7 @@ class ParserOmega:
             total_frames = max(1, int(round(duration * fps)))
             end_frame = total_frames - 1
 
-            # Stage code to remotion src/active_scene.tsx
-            remotion_src = self.runner.sandbox_dir / "remotion" / "src"
-            remotion_src.mkdir(parents=True, exist_ok=True)
-            active_scene_file = remotion_src / "active_scene.tsx"
-            shutil.copy2(code_path, active_scene_file)
+            self.stage_remotion_scene(job_dir, code_path)
 
             workspace_rel_out = f"/workspace/{rel_renders}/{scene.scene_id}.mp4"
             args = [
@@ -401,7 +441,7 @@ class ParserOmega:
                 "1",
                 "--browser-executable=/usr/bin/chromium",
             ]
-            proc = self.runner.run_docker(args, log_file=log_path)
+            proc = self.runner.run_docker(args, log_file=log_path, timeout=1800)
             if proc.returncode != 0:
                 return {
                     "scene_id": scene.scene_id,

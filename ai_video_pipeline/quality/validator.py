@@ -11,6 +11,8 @@ from typing import Any, Dict, List, Optional, Tuple
 from ai_video_pipeline.media.compositor import VideoCompositor
 from ai_video_pipeline.quality.analyzer import ContactSheetGenerator, FrameQualityAnalyzer
 from ai_video_pipeline.quality.frame_extractor import KeyframeExtractor
+from ai_video_pipeline.quality.geometry import check_layout, check_continuity
+from ai_video_pipeline.quality.evidence import fingerprint, acceptance
 from ai_video_pipeline.schemas.job_schemas import (
     JobQAReportModel,
     SceneQAMetricsModel,
@@ -144,6 +146,19 @@ class QualityValidator:
             expected_aspect_ratio=expected_aspect_ratio,
         )
 
+        layout = qa_dir / f"layout_{scene.scene_id}.json"
+        if layout.exists():
+            try:
+                samples = json.loads(layout.read_text())["samples"]
+                geometry_issues = check_layout(samples) + check_continuity(samples)
+                metrics.geometry_status = "failed" if geometry_issues else "passed"
+            except (ValueError, KeyError, TypeError) as e:
+                geometry_issues = [f"Invalid layout metadata: {e}"]
+                metrics.geometry_status = "failed"
+            if geometry_issues:
+                metrics.issues.extend(geometry_issues)
+                metrics.status = "failed"
+
         # Save scene metrics.json
         (scene_qa_dir / "metrics.json").write_text(metrics.model_dump_json(indent=2), encoding="utf-8")
         return metrics
@@ -202,6 +217,17 @@ class QualityValidator:
             cs_str = None
 
         overall_status = "passed" if failed_count == 0 else "failed"
+        final_frames = {}
+        final_video = job_dir / "output" / "final.mp4"
+        if final_video.exists():
+            try:
+                extracted = self.extractor.extract_scene_keyframes(final_video, plan.target_duration_seconds, qa_dir / "final",
+                    additional_timestamps=[plan.target_duration_seconds * fraction for fraction in (.1,.25,.4,.6,.75,.9)])
+                final_frames = {key: str(value) for key, value in extracted.items()}
+            except Exception as e:
+                all_anomalies.append(f"Final composed frame extraction failed: {e}")
+                overall_status = "failed"
+
 
         # Check for existing agent visual review
         review_file = qa_dir / "visual_review.json"
@@ -222,8 +248,11 @@ class QualityValidator:
             scene_reports=scene_metrics,
             detected_anomalies=all_anomalies,
             ai_review=ai_review,
+            final_evidence_frames=final_frames,
         )
 
+        report.artifact_fingerprint = fingerprint(job_dir)
+        report.visual_acceptance = acceptance(job_dir, report)
         (qa_dir / "quality_report.json").write_text(report.model_dump_json(indent=2), encoding="utf-8")
         return report
 
@@ -236,6 +265,26 @@ class QualityValidator:
         qa_dir = job_dir / "qa"
         qa_dir.mkdir(parents=True, exist_ok=True)
         review = VisualReviewModel.model_validate(review_data)
+        if review.overall_status == "approved":
+            report_path = qa_dir / "quality_report.json"
+            if not report_path.exists():
+                raise ValueError("Run inspect_video and inspect actual frames before approval")
+            report = JobQAReportModel.model_validate_json(report_path.read_text())
+            if review.artifact_fingerprint != fingerprint(job_dir):
+                raise ValueError("Approval requires current artifact_fingerprint from quality report")
+            required = [p for metrics in report.scene_reports.values() for p in metrics.evidence_frames.values()]
+            required += list(report.final_evidence_frames.values())
+            if report.total_scenes < 1 or not required or not report.final_evidence_frames or len(report.scene_reports) != report.total_scenes:
+                raise ValueError("Approval requires scene and final composed frame evidence")
+            inspected = set()
+            for name in review.inspected_frames:
+                path = Path(name)
+                if not path.is_absolute(): path = job_dir / path
+                inspected.add(path.resolve())
+            if any(Path(p).resolve() not in inspected or not Path(p).is_file() for p in required):
+                raise ValueError("Approval must identify all inspected scene and composed evidence frames")
+            if report.overall_status != "passed" or report.scenes_failed or review.scenes_to_repair or any(i.severity in ("medium", "high", "critical") for i in review.issues):
+                raise ValueError("Resolve technical failures and substantive visual defects before approval")
         (qa_dir / "visual_review.json").write_text(review.model_dump_json(indent=2), encoding="utf-8")
 
         # Update quality report if present
@@ -244,6 +293,7 @@ class QualityValidator:
             try:
                 rep = JobQAReportModel.model_validate_json(report_file.read_text(encoding="utf-8"))
                 rep.ai_review = review
+                rep.visual_acceptance = acceptance(job_dir, rep)
                 report_file.write_text(rep.model_dump_json(indent=2), encoding="utf-8")
             except Exception:
                 pass

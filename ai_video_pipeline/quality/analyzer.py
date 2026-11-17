@@ -186,6 +186,7 @@ class FrameQualityAnalyzer:
         Evaluate technical visual quality across start, transition, middle, and end keyframes.
         """
         issues: List[str] = []
+        advisories: List[str] = []
         is_blank = False
         is_frozen = False
 
@@ -207,7 +208,7 @@ class FrameQualityAnalyzer:
                 # Run text overlap heuristic on keyframe
                 overlap_warnings = self.detect_suspicious_text_overlap(frames[key])
                 for w in overlap_warnings:
-                    issues.append(f"[{key}] {w}")
+                    advisories.append(f"Unverified pixel-pattern advisory [{key}]: {w}")
 
         # Lingering annotation check across adjacent transition frames
         for i in range(len(ordered_keys) - 1):
@@ -216,8 +217,9 @@ class FrameQualityAnalyzer:
             if k_prev in frames and k_curr in frames:
                 lingering = self.detect_lingering_annotations(frames[k_prev], frames[k_curr])
                 for lw in lingering:
-                    issues.append(f"[{k_prev}->{k_curr}] {lw}")
+                    advisories.append(f"Unverified pixel-pattern advisory [{k_prev}->{k_curr}]: {lw}")
 
+        box_collisions = []
         # Explicit bounding box collision check if metadata is supplied
         if text_bounding_boxes:
             box_collisions = self.check_explicit_bounding_box_collision(text_bounding_boxes)
@@ -242,7 +244,8 @@ class FrameQualityAnalyzer:
                 # are legitimate, not frozen defects.
                 desc_lower = (scene.visual_description or "").lower()
                 is_legitimate_static = (
-                    any(term in desc_lower for term in ("title", "card", "formula", "display", "diagram", "slide", "minimum", "curve"))
+                    any(term in desc_lower for term in ("static", "still frame", "held diagram", "hold card"))
+                    and not any(term in desc_lower for term in ("moving", "animated", "dynamic", "walking", "running"))
                     and contrast_std > 8.0
                     and not is_blank
                 )
@@ -260,14 +263,10 @@ class FrameQualityAnalyzer:
         duration = float(video_info.get("format", {}).get("duration", 0.0))
 
         aspect_ok = True
-        if expected_aspect_ratio == AspectRatio.PORTRAIT_9_16:
-            if width > height:
-                aspect_ok = False
-                issues.append(f"Aspect ratio mismatch: expected 9:16 portrait, got {width}x{height}")
-        elif expected_aspect_ratio == AspectRatio.LANDSCAPE_16_9:
-            if height > width:
-                aspect_ok = False
-                issues.append(f"Aspect ratio mismatch: expected 16:9 landscape, got {width}x{height}")
+        expected = {AspectRatio.PORTRAIT_9_16: 9/16, AspectRatio.LANDSCAPE_16_9: 16/9, AspectRatio.SQUARE_1_1: 1.0}.get(expected_aspect_ratio)
+        if expected is not None and (height<=0 or width<=0 or abs(width/height-expected)/expected>.02):
+            aspect_ok = False
+            issues.append(f"Aspect ratio mismatch: expected {expected_aspect_ratio.value}, got {width}x{height}")
 
         # Check duration
         planned_dur = scene.end_time - scene.start_time
@@ -278,7 +277,7 @@ class FrameQualityAnalyzer:
         # Critical defects (blank frame, wrong aspect ratio) fail;
         # Suspicious overlap / lingering annotation alerts surface as warnings for agent review.
         status = "passed"
-        has_critical = is_blank or not aspect_ok or is_frozen
+        has_critical = is_blank or not aspect_ok or is_frozen or bool(box_collisions)
         if has_critical:
             status = "failed"
         elif issues:
@@ -298,6 +297,7 @@ class FrameQualityAnalyzer:
             aspect_ratio_ok=aspect_ok,
             status=status,
             issues=issues,
+            advisories=advisories,
             evidence_frames=evidence,
         )
 

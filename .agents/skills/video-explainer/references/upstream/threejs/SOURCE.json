@@ -1,0 +1,20 @@
+{
+  "repository": "https://github.com/Hmzbo/animation-skills",
+  "commit": "42dd41ec0b700999d2d013f19affa3c72333f265",
+  "license": "MIT",
+  "purpose": "Reference source; compatibility checked per script, no implicit installation or execution",
+  "files": {
+    "LICENSE": "2c9fa172868a0d63eb5c03352a4b8a159515fdf7c8bce8644c8a79d711c56d3a",
+    "LICENSE.note": "a848f0b11bc7fabd028fd1eafa38fba2d49eda8dad374b489383f20b6bfcfdf5",
+    "UPSTREAM_SKILL.md": "f30592db58602c013654e70ceb2868a0ee44800edb164c47fa163a98c4ddd6ca",
+    "examples/README.md": "41ba48509323eebcf55e5f8b7d8436d6bbf7e280bf95d25b9a2ffe84e8e76eb8",
+    "examples/index.html": "884827fb75a31c69e2b0270289a6b55090616b46501621d906cd12c2687d0040",
+    "examples/product-spin.mjs": "cdf23148a6462dbefb57969b0ba2afb35c1da7e87709add0654791c31a3b7e79",
+    "examples/wave-grid.mjs": "169f438f8d5d332808e43fd83f93c3a93196b8ab015d61acfa7aa92423747253",
+    "references/three-api.md": "ccdb3185cbb11bc79a59c650d238626c216d83059cc65db927b7368335d96178",
+    "references/troubleshooting.md": "6eec9770df266dd66dd7796b38c72e264b5e5ca7877d007c50299f392cc89855",
+    "scripts/preflight.mjs": "50c0e497ea910a51619e5e6d058d8e51e17d7d3b494440c864429fbf317d3e53",
+    "scripts/render.mjs": "808a06b395621d22a92d8f36596f3be2853ab657c74478fe7fc1fea591a4cfa4",
+    "shared/ffmpeg/README.md": "eec5e2be9dbce81d65123aec8f910dfee2d0ede26f3f3870e23fc7a303515391"
+  }
+}

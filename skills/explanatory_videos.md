@@ -29,52 +29,19 @@ Every explanatory video should structure its narrative into 5 clear phases:
 Remotion relies on headless Chromium frame captures. Never allow wall-clock or free-running GSAP timelines. Always lock timelines to Remotion's frame clock:
 
 ```tsx
-import React from 'react';
-import { useCurrentFrame, useVideoConfig, AbsoluteFill } from 'remotion';
-import { ThreeCanvas } from '@remotion/three';
-import { gsap } from 'gsap';
-
-export const ExplainerScene: React.FC = () => {
-  const frame = useCurrentFrame();
-  const { fps, width, height } = useVideoConfig();
-
-  // Create paused timeline driven by exact frame time
-  const timeline = gsap.timeline({ paused: true });
-  const state = { cameraZ: 6, rotationY: 0, electronFlow: 0, textOpacity: 0 };
-
-  timeline.to(state, { cameraZ: 3.5, textOpacity: 1, duration: 1.5, ease: 'power2.out' }, 0);
-  timeline.to(state, { rotationY: Math.PI * 0.5, electronFlow: 1, duration: 2.5, ease: 'sine.inOut' }, 1.0);
-
-  // Seek timeline to current timestamp
-  timeline.seek(frame / fps);
-
-  return (
-    <AbsoluteFill style={{ backgroundColor: '#0a0f1d' }}>
-      <ThreeCanvas width={width} height={height} camera={{ position: [0, 0, state.cameraZ], fov: 45 }}>
-        <ambientLight intensity={0.6} />
-        <directionalLight position={[4, 6, 5]} intensity={2.2} />
-        <mesh rotation={[0.2, state.rotationY, 0]}>
-          <boxGeometry args={[2, 1.2, 0.2]} />
-          <meshStandardMaterial color="#2563eb" roughness={0.3} metalness={0.8} />
-        </mesh>
-      </ThreeCanvas>
-      {/* 2D Overlay / Callout typography */}
-      <div style={{
-        position: 'absolute',
-        top: 60,
-        left: 80,
-        opacity: state.textOpacity,
-        color: '#f8fafc',
-        fontFamily: 'sans-serif',
-      }}>
-        <h2 style={{ fontSize: 44, color: '#38bdf8', margin: 0 }}>Photovoltaic Cell</h2>
-        <p style={{ fontSize: 22, color: '#94a3b8', maxWidth: 450 }}>Silicon P-N junction absorbing solar photons</p>
-      </div>
-    </AbsoluteFill>
-  );
-};
-export default ExplainerScene;
+import {timelineAt} from './_production/cinematic';
+const state = timelineAt(() => ({cameraZ: 6, flow: 0}), (tl, s) => {
+  tl.to(s, {cameraZ: 4, flow: 1, duration: 2, ease: 'sine.inOut'}, 0);
+}, frame / fps);
 ```
+
+Read `.agents/skills/video-explainer/SKILL.md` and the staged `cinematic.tsx`
+and `models.tsx` before scene authoring. The actual implementations provide
+world/lighting/camera, material/shader, edge-outline, particle-path, annotation,
+transition and detailed object-assembly helpers using installed dependencies.
+Customize a meaningful process and composition; empty scenes with boxes and text
+are placeholders unless the user explicitly requests that style.
+
 
 ### B. Composition & Camera Design
 - Use cinematic lighting with warm primary lights (`#ffedd5`) and cool rim/ambient fills (`#1e293b`).

@@ -1,0 +1,34 @@
+{
+  "archive_sha256": "b8697d6447de55ef4484100dcd59dd623bfe81aa135abbecfcd449c7ee1528ab",
+  "integration": "Optional source references; existing three channel entrypoints and renderer contracts preserved",
+  "sources": [
+    {
+      "channel": "video-kids",
+      "path": ".agents/skills/video-kids/references/upstream/blender-skills",
+      "repository": "https://github.com/EL4CTEO/blender-skills",
+      "commit": "9e7e04a603c125a0d17447ab97112fa70a865067",
+      "license": "MIT",
+      "file_count": 43
+    },
+    {
+      "channel": "video-cs-math",
+      "path": ".agents/skills/video-cs-math/references/upstream/manim",
+      "repository": "https://github.com/awesome-skills/manim-skill",
+      "commit": "f8479fa475aace157f12a161519e4bb497a35fbf",
+      "license": "MIT",
+      "file_count": 34
+    },
+    {
+      "channel": "video-explainer",
+      "path": ".agents/skills/video-explainer/references/upstream/threejs",
+      "repository": "https://github.com/Hmzbo/animation-skills",
+      "commit": "42dd41ec0b700999d2d013f19affa3c72333f265",
+      "license": "MIT",
+      "file_count": 12
+    }
+  ],
+  "not_installed": {
+    "claude-animated-shorts": "Already inspected and adapted in the production foundation; no duplicate tree or style-only reference imagery copied",
+    "nocodehack-roblox-engine": "Already inspected and adapted; no Roblox assets or duplicate engine imported"
+  }
+}
