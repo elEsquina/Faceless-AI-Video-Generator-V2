@@ -1,0 +1,18 @@
+{
+  "scene_id": "scene_003",
+  "duration": 10.07,
+  "width": 854,
+  "height": 480,
+  "is_blank": false,
+  "is_frozen": false,
+  "mean_luminance": 3.84,
+  "contrast_std": 18.51,
+  "aspect_ratio_ok": true,
+  "status": "passed",
+  "issues": [],
+  "evidence_frames": {
+    "start": "/home/othmane/Faceless_V2/video_docker_sandbox/workspace/jobs/fbf59e31/qa/scenes/scene_003/frame_start.jpg",
+    "middle": "/home/othmane/Faceless_V2/video_docker_sandbox/workspace/jobs/fbf59e31/qa/scenes/scene_003/frame_middle.jpg",
+    "end": "/home/othmane/Faceless_V2/video_docker_sandbox/workspace/jobs/fbf59e31/qa/scenes/scene_003/frame_end.jpg"
+  }
+}

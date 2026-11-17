@@ -1,0 +1,109 @@
+{
+  "text": "At the next midpoint, we find forty-nine. With each step cutting possibilities in half, binary search runs in logarithmic time.",
+  "voice_id": "af_heart",
+  "language": "en",
+  "duration": 8.525,
+  "sample_rate": 24000,
+  "word_timestamps": [
+    {
+      "word": "At",
+      "start_time": 0.0,
+      "end_time": 0.166
+    },
+    {
+      "word": "the",
+      "start_time": 0.166,
+      "end_time": 0.414
+    },
+    {
+      "word": "next",
+      "start_time": 0.414,
+      "end_time": 0.745
+    },
+    {
+      "word": "midpoint,",
+      "start_time": 0.745,
+      "end_time": 1.407
+    },
+    {
+      "word": "we",
+      "start_time": 1.407,
+      "end_time": 1.573
+    },
+    {
+      "word": "find",
+      "start_time": 1.573,
+      "end_time": 1.904
+    },
+    {
+      "word": "forty-nine.",
+      "start_time": 1.904,
+      "end_time": 2.649
+    },
+    {
+      "word": "With",
+      "start_time": 2.649,
+      "end_time": 2.98
+    },
+    {
+      "word": "each",
+      "start_time": 2.98,
+      "end_time": 3.311
+    },
+    {
+      "word": "step",
+      "start_time": 3.311,
+      "end_time": 3.642
+    },
+    {
+      "word": "cutting",
+      "start_time": 3.642,
+      "end_time": 4.221
+    },
+    {
+      "word": "possibilities",
+      "start_time": 4.221,
+      "end_time": 5.297
+    },
+    {
+      "word": "in",
+      "start_time": 5.297,
+      "end_time": 5.463
+    },
+    {
+      "word": "half,",
+      "start_time": 5.463,
+      "end_time": 5.794
+    },
+    {
+      "word": "binary",
+      "start_time": 5.794,
+      "end_time": 6.29
+    },
+    {
+      "word": "search",
+      "start_time": 6.29,
+      "end_time": 6.787
+    },
+    {
+      "word": "runs",
+      "start_time": 6.787,
+      "end_time": 7.118
+    },
+    {
+      "word": "in",
+      "start_time": 7.118,
+      "end_time": 7.283
+    },
+    {
+      "word": "logarithmic",
+      "start_time": 7.283,
+      "end_time": 8.194
+    },
+    {
+      "word": "time.",
+      "start_time": 8.194,
+      "end_time": 8.525
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "text": "We inspect the middle element, twenty-seven. Since forty-nine is greater, we eliminate the entire left half.",
+  "voice_id": "af_heart",
+  "language": "en",
+  "duration": 7.0,
+  "sample_rate": 24000,
+  "word_timestamps": [
+    {
+      "word": "We",
+      "start_time": 0.0,
+      "end_time": 0.161
+    },
+    {
+      "word": "inspect",
+      "start_time": 0.161,
+      "end_time": 0.724
+    },
+    {
+      "word": "the",
+      "start_time": 0.724,
+      "end_time": 0.966
+    },
+    {
+      "word": "middle",
+      "start_time": 0.966,
+      "end_time": 1.448
+    },
+    {
+      "word": "element,",
+      "start_time": 1.448,
+      "end_time": 2.011
+    },
+    {
+      "word": "twenty-seven.",
+      "start_time": 2.011,
+      "end_time": 2.897
+    },
+    {
+      "word": "Since",
+      "start_time": 2.897,
+      "end_time": 3.299
+    },
+    {
+      "word": "forty-nine",
+      "start_time": 3.299,
+      "end_time": 4.023
+    },
+    {
+      "word": "is",
+      "start_time": 4.023,
+      "end_time": 4.184
+    },
+    {
+      "word": "greater,",
+      "start_time": 4.184,
+      "end_time": 4.747
+    },
+    {
+      "word": "we",
+      "start_time": 4.747,
+      "end_time": 4.908
+    },
+    {
+      "word": "eliminate",
+      "start_time": 4.908,
+      "end_time": 5.632
+    },
+    {
+      "word": "the",
+      "start_time": 5.632,
+      "end_time": 5.874
+    },
+    {
+      "word": "entire",
+      "start_time": 5.874,
+      "end_time": 6.356
+    },
+    {
+      "word": "left",
+      "start_time": 6.356,
+      "end_time": 6.678
+    },
+    {
+      "word": "half.",
+      "start_time": 6.678,
+      "end_time": 7.0
+    }
+  ]
+}

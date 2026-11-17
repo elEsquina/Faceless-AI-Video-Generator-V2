@@ -1,0 +1,83 @@
+{
+  "job_id": "fbf59e31",
+  "overall_status": "passed",
+  "total_scenes": 3,
+  "scenes_passed": 3,
+  "scenes_failed": 0,
+  "contact_sheet_path": "/home/othmane/Faceless_V2/video_docker_sandbox/workspace/jobs/fbf59e31/qa/contact_sheet.jpg",
+  "scene_reports": {
+    "scene_001": {
+      "scene_id": "scene_001",
+      "duration": 10.07,
+      "width": 854,
+      "height": 480,
+      "is_blank": false,
+      "is_frozen": false,
+      "mean_luminance": 3.9,
+      "contrast_std": 20.92,
+      "aspect_ratio_ok": true,
+      "status": "passed",
+      "issues": [],
+      "evidence_frames": {
+        "start": "/home/othmane/Faceless_V2/video_docker_sandbox/workspace/jobs/fbf59e31/qa/scenes/scene_001/frame_start.jpg",
+        "middle": "/home/othmane/Faceless_V2/video_docker_sandbox/workspace/jobs/fbf59e31/qa/scenes/scene_001/frame_middle.jpg",
+        "end": "/home/othmane/Faceless_V2/video_docker_sandbox/workspace/jobs/fbf59e31/qa/scenes/scene_001/frame_end.jpg"
+      }
+    },
+    "scene_002": {
+      "scene_id": "scene_002",
+      "duration": 10.07,
+      "width": 854,
+      "height": 480,
+      "is_blank": false,
+      "is_frozen": false,
+      "mean_luminance": 4.51,
+      "contrast_std": 21.41,
+      "aspect_ratio_ok": true,
+      "status": "passed",
+      "issues": [],
+      "evidence_frames": {
+        "start": "/home/othmane/Faceless_V2/video_docker_sandbox/workspace/jobs/fbf59e31/qa/scenes/scene_002/frame_start.jpg",
+        "middle": "/home/othmane/Faceless_V2/video_docker_sandbox/workspace/jobs/fbf59e31/qa/scenes/scene_002/frame_middle.jpg",
+        "end": "/home/othmane/Faceless_V2/video_docker_sandbox/workspace/jobs/fbf59e31/qa/scenes/scene_002/frame_end.jpg"
+      }
+    },
+    "scene_003": {
+      "scene_id": "scene_003",
+      "duration": 10.07,
+      "width": 854,
+      "height": 480,
+      "is_blank": false,
+      "is_frozen": false,
+      "mean_luminance": 3.84,
+      "contrast_std": 18.51,
+      "aspect_ratio_ok": true,
+      "status": "passed",
+      "issues": [],
+      "evidence_frames": {
+        "start": "/home/othmane/Faceless_V2/video_docker_sandbox/workspace/jobs/fbf59e31/qa/scenes/scene_003/frame_start.jpg",
+        "middle": "/home/othmane/Faceless_V2/video_docker_sandbox/workspace/jobs/fbf59e31/qa/scenes/scene_003/frame_middle.jpg",
+        "end": "/home/othmane/Faceless_V2/video_docker_sandbox/workspace/jobs/fbf59e31/qa/scenes/scene_003/frame_end.jpg"
+      }
+    }
+  },
+  "detected_anomalies": [],
+  "ai_review": {
+    "job_id": "fbf59e31",
+    "reviewer": "codex_antigravity",
+    "overall_status": "needs_repair",
+    "issues": [
+      {
+        "scene_id": "scene_002",
+        "severity": "critical",
+        "issue_type": "blank_frame",
+        "description": "Scene 2 rendered as an empty black screen with zero contrast or elements.",
+        "suggested_fix": "Restore Manim construct method drawing array cells, pointers, and midpoint comparison."
+      }
+    ],
+    "scenes_to_repair": [
+      "scene_002"
+    ],
+    "notes": "Scene 2 requires animation code restoration."
+  }
+}

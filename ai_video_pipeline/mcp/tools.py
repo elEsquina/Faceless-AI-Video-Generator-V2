@@ -743,7 +743,27 @@ class PipelineMCPTools:
             report_file = job_dir / "qa" / "quality_report.json"
             if report_file.exists():
                 return json.loads(report_file.read_text(encoding="utf-8"))
-            # If not yet generated, run visual QA now
-            return self.inspect_video(job_id)
+
+            review_file = job_dir / "qa" / "visual_review.json"
+            ai_rev = json.loads(review_file.read_text(encoding="utf-8")) if review_file.exists() else None
+
+            # If not yet generated, attempt to run visual QA now if plan exists
+            plan_file = job_dir / "storyboard.json"
+            if not plan_file.exists():
+                plan_file = job_dir / "plan.json"
+            if plan_file.exists():
+                return self.inspect_video(job_id)
+
+            return {
+                "job_id": job_id,
+                "overall_status": "pending",
+                "total_scenes": 0,
+                "scenes_passed": 0,
+                "scenes_failed": 0,
+                "contact_sheet_path": None,
+                "scene_reports": {},
+                "detected_anomalies": [],
+                "ai_review": ai_rev,
+            }
         except Exception as e:
             return {"error": f"Failed to retrieve quality report: {e}", "job_id": job_id}

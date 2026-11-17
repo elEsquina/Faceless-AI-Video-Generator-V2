@@ -115,3 +115,8 @@ class LocalPipelineMCPServer:
     def start_stdio_server(self) -> None:
         """Launch stdio MCP transport for Codex / Antigravity integration."""
         self.fastmcp.run(transport="stdio")
+
+
+if __name__ == "__main__":
+    server = create_pipeline_mcp_server()
+    server.run(transport="stdio")
